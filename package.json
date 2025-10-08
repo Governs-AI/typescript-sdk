@@ -1,5 +1,5 @@
 {
-  "name": "@governsai/sdk",
+  "name": "@governs-ai/sdk",
   "version": "1.0.0-alpha.1",
   "description": "TypeScript SDK for GovernsAI - AI governance platform",
   "main": "dist/index.js",
@@ -51,7 +51,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/governs-ai/typescript-sdk.git"
+    "url": "git+https://github.com/governs-ai/typescript-sdk.git"
   },
   "bugs": {
     "url": "https://github.com/governs-ai/typescript-sdk/issues"
