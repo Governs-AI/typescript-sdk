@@ -426,5 +426,4 @@ MIT License - see LICENSE file for details.
 For support and questions:
 
 - GitHub Issues: [Create an issue](https://github.com/governs-ai/typescript-sdk/issues)
-- Documentation: [SDK Documentation](https://docs.governs.ai/sdk)
-- Community: [Discord Server](https://discord.gg/governs-ai)
+- Documentation: [SDK Documentation](https://docs.governsai.com/sdk)
