@@ -24,13 +24,14 @@ npm install @governs-ai/sdk
 ```typescript
 import { GovernsAIClient, createClientFromEnv } from "@governs-ai/sdk";
 
-// Create client from environment variables
+// Create client from environment variables (all required)
+// Requires: GOVERNS_API_KEY, GOVERNS_BASE_URL, GOVERNS_ORG_ID
 const client = createClientFromEnv();
 
-// Or create client with explicit configuration
+// Or create client with explicit configuration (baseUrl required)
 const client = new GovernsAIClient({
   apiKey: "your-api-key",
-  baseUrl: "http://localhost:3002",
+  baseUrl: "https://your-platform-url", // required
   orgId: "org-456", // Organization context (static)
 });
 
@@ -40,7 +41,7 @@ console.log("Connected:", isConnected);
 
 // Precheck a request for a specific user (userId is dynamic)
 const userId = "user-123";
-const precheckResponse = await client.precheckRequest(
+const precheckResponse = await client.precheck(
   {
     tool: "model.chat",
     scope: "net.external",
@@ -69,11 +70,10 @@ if (precheckResponse.decision === "deny") {
 ```bash
 # Required
 GOVERNS_API_KEY=your-api-key
+GOVERNS_BASE_URL=https://your-platform-url
+GOVERNS_ORG_ID=org-456
 
 # Optional
-GOVERNS_BASE_URL=http://localhost:3002
-GOVERNS_USER_ID=user-123
-GOVERNS_ORG_ID=org-456
 GOVERNS_TIMEOUT=30000
 GOVERNS_RETRIES=3
 GOVERNS_RETRY_DELAY=1000
@@ -84,8 +84,7 @@ GOVERNS_RETRY_DELAY=1000
 ```typescript
 const client = new GovernsAIClient({
   apiKey: "your-api-key",
-  baseUrl: "http://localhost:3002",
-  userId: "user-123",
+  baseUrl: "https://your-platform-url",
   orgId: "org-456",
   timeout: 30000,
   retries: 3,
@@ -107,14 +106,16 @@ const precheckResponse = await client.precheck({
   raw_text: 'Hello, how are you?',
   payload: { messages: [{ role: 'user', content: 'Hello' }] },
   tags: ['demo', 'chat'],
-});
+}, 'user-123');
 
-// Check a tool call
-const toolPrecheck = await client.precheck.checkToolCall('weather_current', {
-  latitude: 52.52,
-  longitude: 13.41,
-  location_name: 'Berlin',
-});
+// Check a tool call (via PrecheckClient)
+const toolPrecheck = await client.precheckClient.checkToolCall(
+  'weather_current',
+  { latitude: 52.52, longitude: 13.41, location_name: 'Berlin' },
+  'net.external',
+  undefined,
+  'user-123'
+);
 
 // Handle different decisions
 switch (precheckResponse.decision) {
@@ -128,7 +129,7 @@ switch (precheckResponse.decision) {
     break;
   case 'confirm':
     // Require user confirmation
-    const confirmation = await client.createConfirmation(
+    const confirmation = await client.confirm(
       'correlation-id',
       'chat',
       'Chat request',
@@ -149,7 +150,7 @@ Handle user approval for sensitive operations:
 
 ```typescript
 // Create confirmation request
-const confirmation = await client.createConfirmation(
+const confirmation = await client.confirm(
   "correlation-id",
   "tool_call",
   "Execute payment tool",
@@ -166,7 +167,7 @@ await client.pollConfirmation(
 );
 
 // Wait for approval
-const approvedConfirmation = await client.confirmation.waitForApproval(
+const approvedConfirmation = await client.confirmationClient.waitForApproval(
   confirmation.confirmation.correlationId,
   {
     interval: 2000,
@@ -182,11 +183,12 @@ Track and manage AI usage costs:
 
 ```typescript
 // Get budget context
-const budgetContext = await client.getBudgetContext();
+const userId = 'user-123';
+const budgetContext = await client.getBudgetContext(userId);
 console.log("Remaining budget:", budgetContext.remaining_budget);
 
 // Check if budget allows a cost
-const budgetStatus = await client.budget.checkBudget(50.0);
+const budgetStatus = await client.budgetClient.checkBudget(50.0, userId);
 if (!budgetStatus.allowed) {
   console.log("Insufficient budget:", budgetStatus.reason);
 }
@@ -206,7 +208,7 @@ await client.recordUsage({
 });
 
 // Get spend analytics
-const spendData = await client.analytics.getSpendAnalytics("30d");
+const spendData = await client.analyticsClient.getSpendAnalytics("30d");
 console.log("Total spend:", spendData.spend.totalSpend);
 console.log("Monthly spend:", spendData.spend.monthlySpend);
 console.log("Over budget:", spendData.spend.isOverBudget);
@@ -236,16 +238,16 @@ const tools = [
   },
 ];
 
-await client.tools.registerTools(tools);
+await client.toolsClient.registerTools(tools);
 
 // Execute tool with governance checks
-const toolResult = await client.tools.executeTool("weather_current", {
+const toolResult = await client.toolsClient.executeTool("weather_current", {
   latitude: 52.52,
   longitude: 13.41,
 });
 
 // Get tool metadata
-const metadata = await client.tools.getToolMetadata("weather_current");
+const metadata = await client.toolsClient.getToolMetadata("weather_current");
 console.log("Risk level:", metadata.metadata.risk_level);
 ```
 
@@ -255,7 +257,7 @@ Get comprehensive analytics and reporting:
 
 ```typescript
 // Get decision analytics
-const decisions = await client.analytics.getDecisions({
+const decisions = await client.analyticsClient.getDecisions({
   timeRange: "30d",
   includeStats: true,
 });
@@ -264,7 +266,7 @@ console.log("Total decisions:", decisions.stats.total);
 console.log("By decision:", decisions.stats.byDecision);
 
 // Get spend analytics
-const spendData = await client.analytics.getSpendAnalytics("30d");
+const spendData = await client.analyticsClient.getSpendAnalytics("30d");
 console.log("Spend breakdown:", {
   total: spendData.spend.totalSpend,
   monthly: spendData.spend.monthlySpend,
@@ -273,14 +275,14 @@ console.log("Spend breakdown:", {
 });
 
 // Get usage records
-const usageRecords = await client.analytics.getUsageRecords({
+const usageRecords = await client.analyticsClient.getUsageRecords({
   startDate: "2024-01-01",
   endDate: "2024-01-31",
   limit: 100,
 });
 
 // Get comprehensive dashboard data
-const dashboardData = await client.analytics.getDashboardData(
+const dashboardData = await client.analyticsClient.getDashboardData(
   "org-slug",
   "30d"
 );
@@ -294,17 +296,14 @@ The SDK provides comprehensive error handling with retry logic:
 import { GovernsAIError, PrecheckError, BudgetError } from "@governs-ai/sdk";
 
 try {
-  const response = await client.precheck(request);
+  const response = await client.precheck(request, 'user-123');
 } catch (error) {
   if (error instanceof PrecheckError) {
     console.error("Precheck failed:", error.message);
-    if (error.retryable) {
-      // Retry the operation
-    }
   } else if (error instanceof BudgetError) {
     console.error("Budget error:", error.message);
   } else if (error instanceof GovernsAIError) {
-    console.error("SDK error:", error.message);
+    console.error("SDK error": error.message);
   }
 }
 ```
@@ -335,7 +334,7 @@ const requests = [
   { tool: "weather_current", scope: "net.external", raw_text: "Weather" },
 ];
 
-const results = await client.precheck.checkBatch(requests);
+const results = await client.precheckClient.checkBatch(requests);
 
 // Batch tool execution
 const toolCalls = [
@@ -343,7 +342,7 @@ const toolCalls = [
   { tool: "payment_process", args: { amount: 99.99 } },
 ];
 
-const results = await client.tools.executeBatchTools(toolCalls);
+const toolResults = await client.toolsClient.executeBatchTools(toolCalls);
 ```
 
 ### Health Monitoring
@@ -355,8 +354,8 @@ console.log("Platform status:", healthStatus.status);
 console.log("Services:", healthStatus.services);
 
 // Test individual services
-const precheckStatus = await client.precheck.getServiceStatus();
-const budgetStatus = await client.budget.getServiceStatus();
+const precheckStatus = await client.precheckClient.getServiceStatus();
+const budgetStatus = await client.budgetClient.getServiceStatus();
 ```
 
 ## Examples
@@ -374,12 +373,12 @@ See the `examples/` directory for complete usage examples:
 
 Main client class that orchestrates all SDK functionality.
 
-#### Methods
+#### Methods (selected)
 
-- `precheck(request: PrecheckRequest): Promise<PrecheckResponse>`
-- `getBudgetContext(): Promise<BudgetContext>`
+- `precheck(request: PrecheckRequest, userId: string): Promise<PrecheckResponse>`
+- `getBudgetContext(userId: string): Promise<BudgetContext>`
 - `recordUsage(usage: UsageRecord): Promise<void>`
-- `createConfirmation(...): Promise<ConfirmationResponse>`
+- `confirm(...): Promise<ConfirmationResponse>`
 - `getConfirmationStatus(correlationId: string): Promise<ConfirmationStatus>`
 - `pollConfirmation(...): Promise<void>`
 - `testConnection(): Promise<boolean>`
@@ -387,11 +386,11 @@ Main client class that orchestrates all SDK functionality.
 
 ### Feature Clients
 
-- **PrecheckClient**: Request validation and governance compliance
-- **ConfirmationClient**: User approval workflows
-- **BudgetClient**: Budget management and usage tracking
-- **ToolClient**: Tool registration and execution
-- **AnalyticsClient**: Analytics and reporting
+- **PrecheckClient** (client.precheckClient): Request validation and governance compliance
+- **ConfirmationClient** (client.confirmationClient): User approval workflows
+- **BudgetClient** (client.budgetClient): Budget management and usage tracking
+- **ToolClient** (client.toolsClient): Tool registration and execution
+- **AnalyticsClient** (client.analyticsClient): Analytics and reporting
 
 ## TypeScript Support
 
