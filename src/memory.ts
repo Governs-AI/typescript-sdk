@@ -14,21 +14,18 @@ import {
     PrecheckResponse,
 } from './types';
 import { HTTPClient, defaultLogger, Logger } from './utils';
-import { GovernsAIError } from './errors';
 
 export class ContextClient {
     private httpClient: HTTPClient;
-    private config: GovernsAIConfig;
     private logger: Logger;
 
-    constructor(httpClient: HTTPClient, config: GovernsAIConfig) {
+    constructor(httpClient: HTTPClient, _config: GovernsAIConfig) {
         this.httpClient = httpClient;
-        this.config = config;
         this.logger = defaultLogger;
     }
 
-    updateConfig(config: GovernsAIConfig): void {
-        this.config = config;
+    updateConfig(_config: GovernsAIConfig): void {
+        // no-op for now; kept for interface consistency
     }
 
     async saveContextExplicit(input: SaveContextExplicitInput): Promise<SaveContextResponse> {
@@ -49,7 +46,11 @@ export class ContextClient {
 
     async searchCrossAgent(query: string, opts?: { limit?: number; threshold?: number; scope?: 'user' | 'org' | 'both'; }): Promise<ContextSearchResultItem[]> {
         this.logger.debug('Cross-agent search', { queryLen: query.length, scope: opts?.scope });
-        return this.searchContext({ query, limit: opts?.limit, threshold: opts?.threshold, scope: opts?.scope });
+        const input: ContextSearchInput = { query } as ContextSearchInput;
+        if (typeof opts?.limit === 'number') (input as any).limit = opts.limit;
+        if (typeof opts?.threshold === 'number') (input as any).threshold = opts.threshold as number;
+        if (opts?.scope) (input as any).scope = opts.scope;
+        return this.searchContext(input);
     }
 
     async getOrCreateConversation(input: { agentId: string; agentName: string; title?: string; }): Promise<ConversationSummary> {
@@ -95,13 +96,14 @@ export class ContextClient {
             content,
             contentType: 'user_message',
             agentId: params.agentId,
-            agentName: params.agentName,
-            conversationId: params.conversationId,
-            correlationId: params.correlationId,
-            metadata: { ...(saveAction && (saveAction as any).metadata), ...(params.metadata || {}) },
-            scope: params.scope,
-            visibility: params.visibility,
-        };
+        } as StoreContextInput;
+        if (params.agentName) (input as any).agentName = params.agentName;
+        if (params.conversationId) (input as any).conversationId = params.conversationId;
+        if (params.correlationId) (input as any).correlationId = params.correlationId;
+        const combinedMeta = { ...(saveAction && (saveAction as any).metadata), ...(params.metadata || {}) };
+        if (Object.keys(combinedMeta).length > 0) (input as any).metadata = combinedMeta;
+        if (params.scope) (input as any).scope = params.scope;
+        if (params.visibility) (input as any).visibility = params.visibility;
 
         try {
             const saved = await this.storeContext(input);
