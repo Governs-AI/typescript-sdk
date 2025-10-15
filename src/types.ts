@@ -11,7 +11,7 @@
 
 export interface GovernsAIConfig {
     apiKey: string;
-    baseUrl?: string; // Default: 'http://localhost:3002'
+    baseUrl: string; // required, no static default
     orgId: string; // Required - organization context
     timeout?: number; // Default: 30000
     retries?: number; // Default: 3
@@ -83,7 +83,15 @@ export interface PrecheckResponse {
     ts?: number;
     budget_status?: BudgetStatus;
     budget_info?: BudgetInfo;
+    // Spec additions
+    intent?: { save?: boolean };
+    suggestedActions?: SuggestedAction[];
 }
+
+// Suggested actions from precheck (per spec)
+export type SuggestedAction =
+    | { type: 'context.save'; content?: string; reason?: string; metadata?: Record<string, any> }
+    | { type: string; [k: string]: any };
 
 // ============================================================================
 // Message and Chat Types
@@ -296,6 +304,76 @@ export interface ToolCallData {
         offset: number;
         hasMore: boolean;
     };
+}
+
+// =========================================================================
+// Context Memory Types (per ContextClient spec)
+// =========================================================================
+
+export interface ContextSaveInputBase {
+    content: string;
+    contentType: 'user_message' | 'agent_message' | 'document' | 'decision' | 'tool_result';
+    agentId: string;
+    agentName?: string;
+    conversationId?: string;
+    parentId?: string;
+    correlationId?: string;
+    metadata?: Record<string, any>;
+    scope?: 'user' | 'org';
+    visibility?: 'private' | 'team' | 'org';
+    expiresAt?: string; // ISO
+}
+
+export type SaveContextExplicitInput = ContextSaveInputBase;
+export type StoreContextInput = ContextSaveInputBase;
+
+export interface SaveContextResponse {
+    contextId: string;
+}
+
+export interface ContextSearchInput {
+    query: string;
+    agentId?: string;
+    contentTypes?: string[];
+    conversationId?: string;
+    scope?: 'user' | 'org' | 'both';
+    limit?: number;
+    threshold?: number; // default 0.7
+    startDate?: string; // ISO
+    endDate?: string;   // ISO
+}
+
+export interface ContextSearchResultItem {
+    id: string;
+    userId?: string;
+    orgId?: string;
+    content: string;
+    contentType: string;
+    agentId?: string;
+    agentName?: string;
+    conversationId?: string;
+    metadata?: Record<string, any>;
+    createdAt: string;
+    similarity: number;
+}
+
+export interface ConversationSummary {
+    id: string;
+    title?: string;
+    messageCount: number;
+    tokenCount: number;
+    lastMessageAt?: string;
+    scope: 'user' | 'org';
+}
+
+export interface ConversationItem {
+    id: string;
+    content: string;
+    contentType: string;
+    agentId?: string;
+    createdAt: string;
+    parentId?: string;
+    metadata?: Record<string, any>;
 }
 
 export interface DecisionFilters {

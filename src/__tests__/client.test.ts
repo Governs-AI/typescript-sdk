@@ -16,7 +16,7 @@ describe('GovernsAIClient', () => {
 
         client = new GovernsAIClient({
             apiKey: 'test-api-key',
-            baseUrl: 'http://localhost:3002',
+            baseUrl: 'http://example.com',
             orgId: 'test-org',
         });
     });
@@ -25,7 +25,7 @@ describe('GovernsAIClient', () => {
         it('should create client with valid config', () => {
             expect(client).toBeInstanceOf(GovernsAIClient);
             expect(client.getConfig().apiKey).toBe('test-api-key');
-            expect(client.getConfig().baseUrl).toBe('http://localhost:3002');
+            expect(client.getConfig().baseUrl).toBe('http://example.com');
         });
 
         it('should throw error for missing API key', () => {
@@ -100,7 +100,7 @@ describe('GovernsAIClient', () => {
 
             expect(result).toEqual(mockResponse);
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://localhost:3002/api/v1/precheck',
+                'http://example.com/api/v1/precheck',
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({
@@ -129,7 +129,7 @@ describe('GovernsAIClient', () => {
 
             expect(result).toEqual(mockResponse);
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://localhost:3002/api/budget/context',
+                'http://example.com/api/budget/context',
                 expect.objectContaining({
                     method: 'GET',
                 })
@@ -158,7 +158,7 @@ describe('GovernsAIClient', () => {
             await expect(client.recordUsage(usage)).resolves.not.toThrow();
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://localhost:3002/api/usage',
+                'http://example.com/api/usage',
                 expect.objectContaining({
                     method: 'POST',
                     body: JSON.stringify(usage),
@@ -199,7 +199,7 @@ describe('GovernsAIClient', () => {
 
             expect(result).toEqual(mockResponse);
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://localhost:3002/api/v1/confirmation/create',
+                'http://example.com/api/v1/confirmation/create',
                 expect.objectContaining({
                     method: 'POST',
                 })

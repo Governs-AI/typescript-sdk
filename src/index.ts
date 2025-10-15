@@ -12,6 +12,7 @@ export { ConfirmationClient } from './confirmation';
 export { BudgetClient } from './budget';
 export { ToolClient } from './tools';
 export { AnalyticsClient } from './analytics';
+export { ContextClient } from './memory';
 
 // Types
 export * from './types';

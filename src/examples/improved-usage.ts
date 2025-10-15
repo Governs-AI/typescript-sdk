@@ -9,7 +9,7 @@ async function improvedUsageExample() {
     // Create client with organization context (static)
     const client = new GovernsAIClient({
         apiKey: process.env['GOVERNS_API_KEY']!,
-        baseUrl: process.env['GOVERNS_BASE_URL'] || 'http://localhost:3002',
+        baseUrl: process.env['GOVERNS_BASE_URL']!,
         orgId: 'org-456', // Organization context - static
     });
 
@@ -29,7 +29,7 @@ async function improvedUsageExample() {
         console.log('User 2 budget:', budget2);
 
         // Precheck requests for different users
-        const precheck1 = await client.precheckRequest({
+        const precheck1 = await client.precheck({
             tool: 'model.chat',
             scope: 'net.external',
             raw_text: 'Hello from user 1',
@@ -37,7 +37,7 @@ async function improvedUsageExample() {
             tags: ['demo', 'chat'],
         }, user1);
 
-        const precheck2 = await client.precheckRequest({
+        const precheck2 = await client.precheck({
             tool: 'model.chat',
             scope: 'net.external',
             raw_text: 'Hello from user 2',

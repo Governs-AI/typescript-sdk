@@ -20,13 +20,13 @@ async function basicUsageExample() {
         console.log('Budget context:', budgetContext);
 
         // Precheck a chat message
-        const precheckResponse = await client.precheck.checkRequest({
+        const precheckResponse = await client.precheck({
             tool: 'model.chat',
             scope: 'net.external',
             raw_text: 'Hello, how are you?',
             payload: { messages: [{ role: 'user', content: 'Hello' }] },
             tags: ['demo', 'chat'],
-        });
+        }, 'user-123');
 
         console.log('Precheck response:', precheckResponse);
 
@@ -38,6 +38,17 @@ async function basicUsageExample() {
         if (precheckResponse.decision === 'confirm') {
             console.log('Confirmation required');
             // Handle confirmation flow...
+        }
+
+        // Maybe save context based on precheck hints
+        const maybeSaved = await client.context.maybeSaveFromPrecheck({
+            precheck: precheckResponse,
+            fallbackContent: 'Hello, how are you?',
+            agentId: 'demo-agent',
+            agentName: 'Demo Agent'
+        });
+        if (maybeSaved.saved) {
+            console.log('Context saved with id:', maybeSaved.contextId);
         }
 
         // Record usage after AI call

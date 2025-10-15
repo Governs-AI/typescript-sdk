@@ -27,20 +27,28 @@ export class HTTPClient {
 
     async request<T = any>(
         endpoint: string,
-        options: RequestInit = {}
+        // Use any to avoid DOM lib dependency in non-browser builds
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        options: any = {}
     ): Promise<T> {
         const url = `${this.config.baseUrl}${endpoint}`;
-        const requestOptions: RequestInit = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const requestOptions: any = {
             ...options,
             headers: {
                 ...this.defaultHeaders,
                 ...options.headers,
             },
-            signal: AbortSignal.timeout(this.config.timeout || 30000),
+            // optional in Node; AbortSignal may not exist in some targets
+            signal: (globalThis as any).AbortSignal?.timeout?.(this.config.timeout || 30000),
         };
 
         try {
-            const response = await fetch(url, requestOptions);
+            const fetchFn = (globalThis as any).fetch as any;
+            if (!fetchFn) {
+                throw new GovernsAIError('fetch is not available in this environment');
+            }
+            const response = await fetchFn(url, requestOptions);
             const data = await response.json().catch(() => null);
 
             const httpResponse: HTTPResponse = {
@@ -66,7 +74,7 @@ export class HTTPClient {
             }
 
             throw new GovernsAIError(
-                error instanceof Error ? error instanceof Error ? error.message : "Unknown error" : 'Network error',
+                error instanceof Error ? error.message : 'Network error',
                 undefined,
                 undefined,
                 isRetryableError(error as Error)
@@ -74,11 +82,13 @@ export class HTTPClient {
         }
     }
 
-    async get<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async get<T = any>(endpoint: string, options: any = {}): Promise<T> {
         return this.request<T>(endpoint, { ...options, method: 'GET' });
     }
 
-    async post<T = any>(endpoint: string, data?: any, options: RequestInit = {}): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async post<T = any>(endpoint: string, data?: any, options: any = {}): Promise<T> {
         return this.request<T>(endpoint, {
             ...options,
             method: 'POST',
@@ -86,7 +96,8 @@ export class HTTPClient {
         });
     }
 
-    async put<T = any>(endpoint: string, data?: any, options: RequestInit = {}): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async put<T = any>(endpoint: string, data?: any, options: any = {}): Promise<T> {
         return this.request<T>(endpoint, {
             ...options,
             method: 'PUT',
@@ -94,7 +105,8 @@ export class HTTPClient {
         });
     }
 
-    async delete<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async delete<T = any>(endpoint: string, options: any = {}): Promise<T> {
         return this.request<T>(endpoint, { ...options, method: 'DELETE' });
     }
 }
@@ -125,7 +137,9 @@ export async function withRetry<T>(
             }
 
             const delay = getRetryDelay(attempt, config.retryDelay);
-            console.warn(`${context} failed (attempt ${attempt}/${config.maxRetries}), retrying in ${delay}ms:`, error);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c: any = (globalThis as any).console;
+            if (c?.warn) c.warn(`${context} failed (attempt ${attempt}/${config.maxRetries}), retrying in ${delay}ms:`, error);
 
             await sleep(delay);
         }
@@ -151,7 +165,9 @@ export function generateCorrelationId(): string {
 }
 
 export function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const st: any = (globalThis as any).setTimeout;
+    return new Promise(resolve => st(resolve, ms));
 }
 
 export function validateConfig(config: GovernsAIConfig): void {
@@ -174,7 +190,10 @@ export function validateConfig(config: GovernsAIConfig): void {
 
 export function isValidUrl(url: string): boolean {
     try {
-        new URL(url);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const URLCtor = (globalThis as any).URL;
+        if (!URLCtor) return false;
+        new URLCtor(url);
         return true;
     } catch {
         return false;
@@ -186,7 +205,6 @@ export function mergeConfig(
     userConfig: Partial<GovernsAIConfig>
 ): GovernsAIConfig {
     return {
-        baseUrl: 'http://localhost:3002',
         timeout: 30000,
         retries: 3,
         retryDelay: 1000,
@@ -200,7 +218,10 @@ export function mergeConfig(
 // ============================================================================
 
 export function buildQueryString(params: Record<string, any>): string {
-    const searchParams = new URLSearchParams();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SearchParams: any = (globalThis as any).URLSearchParams;
+    if (!SearchParams) return '';
+    const searchParams = new SearchParams();
 
     Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -217,10 +238,13 @@ export function buildQueryString(params: Record<string, any>): string {
 }
 
 export function parseQueryParams(url: string): Record<string, string> {
-    const urlObj = new URL(url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const URLCtor: any = (globalThis as any).URL;
+    if (!URLCtor) return {};
+    const urlObj = new URLCtor(url);
     const params: Record<string, string> = {};
 
-    urlObj.searchParams.forEach((value, key) => {
+    urlObj.searchParams.forEach((value: string, key: string) => {
         params[key] = value;
     });
 
@@ -375,25 +399,33 @@ export class ConsoleLogger implements Logger {
 
     debug(message: string, ...args: any[]): void {
         if (this.shouldLog('debug')) {
-            console.debug(`[GovernsAI SDK] ${message}`, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c: any = (globalThis as any).console;
+            c?.debug && c.debug(`[GovernsAI SDK] ${message}`, ...args);
         }
     }
 
     info(message: string, ...args: any[]): void {
         if (this.shouldLog('info')) {
-            console.info(`[GovernsAI SDK] ${message}`, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c: any = (globalThis as any).console;
+            c?.info && c.info(`[GovernsAI SDK] ${message}`, ...args);
         }
     }
 
     warn(message: string, ...args: any[]): void {
         if (this.shouldLog('warn')) {
-            console.warn(`[GovernsAI SDK] ${message}`, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c: any = (globalThis as any).console;
+            c?.warn && c.warn(`[GovernsAI SDK] ${message}`, ...args);
         }
     }
 
     error(message: string, ...args: any[]): void {
         if (this.shouldLog('error')) {
-            console.error(`[GovernsAI SDK] ${message}`, ...args);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const c: any = (globalThis as any).console;
+            c?.error && c.error(`[GovernsAI SDK] ${message}`, ...args);
         }
     }
 

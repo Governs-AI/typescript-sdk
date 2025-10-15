@@ -8,10 +8,10 @@ import { GovernsAIClient, Message } from '../index';
 class ChatApplication {
     private client: GovernsAIClient;
 
-    constructor(apiKey: string, baseUrl?: string, orgId: string = 'org-456') {
+    constructor(apiKey: string, baseUrl: string, orgId: string = 'org-456') {
         this.client = new GovernsAIClient({
             apiKey,
-            baseUrl: baseUrl || 'http://localhost:3002',
+            baseUrl,
             orgId,
         });
     }
@@ -24,13 +24,13 @@ class ChatApplication {
     }> {
         try {
             // Precheck the chat message
-            const precheckResponse = await this.client.precheck.checkRequest({
+            const precheckResponse = await this.client.precheck({
                 tool: 'model.chat',
                 scope: 'net.external',
                 raw_text: messages[messages.length - 1]?.content || '',
                 payload: { messages, provider },
                 tags: ['chat', 'integration'],
-            });
+            }, 'user-123');
 
             console.log('Precheck decision:', precheckResponse.decision);
 
@@ -54,7 +54,7 @@ class ChatApplication {
 
                 case 'confirm':
                     // Create confirmation request
-                    const confirmation = await this.client.createConfirmation(
+                    const confirmation = await this.client.confirm(
                         `chat_${Date.now()}`,
                         'chat',
                         `Chat request with ${messages.length} message(s)`,
@@ -65,7 +65,7 @@ class ChatApplication {
                     return {
                         allowed: false,
                         confirmationRequired: true,
-                        confirmationUrl: this.client.confirmation.getConfirmationUrl(confirmation.confirmation.correlationId),
+                        confirmationUrl: this.client.confirmationClient.getConfirmationUrl(confirmation.confirmation.correlationId),
                     };
 
                 case 'redact':
@@ -113,9 +113,9 @@ class ChatApplication {
     async getAnalytics(timeRange: string = '30d') {
         try {
             const [decisions, spend, usage] = await Promise.all([
-                this.client.analytics.getDecisions({ timeRange, includeStats: true }),
-                this.client.analytics.getSpendAnalytics(timeRange),
-                this.client.analytics.getUsageStats(timeRange),
+                this.client.analyticsClient.getDecisions({ timeRange, includeStats: true }),
+                this.client.analyticsClient.getSpendAnalytics(timeRange),
+                this.client.analyticsClient.getUsageStats(timeRange),
             ]);
 
             return {
@@ -132,7 +132,7 @@ class ChatApplication {
 
 // Example usage
 async function chatIntegrationExample() {
-    const chatApp = new ChatApplication('your-api-key');
+    const chatApp = new ChatApplication('your-api-key', 'http://example.com');
 
     // Process a chat message
     const messages: Message[] = [
@@ -161,6 +161,6 @@ async function chatIntegrationExample() {
 }
 
 // Run the example
-if (require.main === module) {
-    chatIntegrationExample();
-}
+// If running in a Node context, uncomment the following to run directly:
+// (globalThis as any).require && (globalThis as any).module &&
+//     ((globalThis as any).require.main === (globalThis as any).module) && chatIntegrationExample();

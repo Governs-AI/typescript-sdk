@@ -11,6 +11,7 @@ import { ConfirmationClient } from './confirmation';
 import { BudgetClient } from './budget';
 import { ToolClient } from './tools';
 import { AnalyticsClient } from './analytics';
+import { ContextClient } from './memory';
 
 export class GovernsAIClient {
     private httpClient: HTTPClient;
@@ -18,18 +19,19 @@ export class GovernsAIClient {
     private logger: Logger;
 
     // Feature clients
-    public readonly precheck: PrecheckClient;
-    public readonly confirmation: ConfirmationClient;
-    public readonly budget: BudgetClient;
-    public readonly tools: ToolClient;
-    public readonly analytics: AnalyticsClient;
+    public readonly precheckClient: PrecheckClient;
+    public readonly confirmationClient: ConfirmationClient;
+    public readonly budgetClient: BudgetClient;
+    public readonly toolsClient: ToolClient;
+    public readonly analyticsClient: AnalyticsClient;
+    public readonly context: ContextClient;
 
     constructor(config: GovernsAIConfig) {
         // Validate and merge configuration
         const mergedConfig = mergeConfig(
             {
                 apiKey: config.apiKey,
-                baseUrl: 'http://localhost:3002',
+                baseUrl: config.baseUrl,
                 orgId: config.orgId,
                 timeout: 30000,
                 retries: 3,
@@ -46,11 +48,12 @@ export class GovernsAIClient {
         this.httpClient = new HTTPClient(this.config);
 
         // Initialize feature clients
-        this.precheck = new PrecheckClient(this.httpClient, this.config);
-        this.confirmation = new ConfirmationClient(this.httpClient, this.config);
-        this.budget = new BudgetClient(this.httpClient, this.config);
-        this.tools = new ToolClient(this.httpClient, this.config);
-        this.analytics = new AnalyticsClient(this.httpClient, this.config);
+        this.precheckClient = new PrecheckClient(this.httpClient, this.config);
+        this.confirmationClient = new ConfirmationClient(this.httpClient, this.config);
+        this.budgetClient = new BudgetClient(this.httpClient, this.config);
+        this.toolsClient = new ToolClient(this.httpClient, this.config);
+        this.analyticsClient = new AnalyticsClient(this.httpClient, this.config);
+        this.context = new ContextClient(this.httpClient, this.config);
     }
 
     // ============================================================================
@@ -58,11 +61,11 @@ export class GovernsAIClient {
     // ============================================================================
 
     /**
-     * Precheck a request for governance compliance
+     * Precheck a request for governance compliance (spec name: precheck)
      */
-    async precheckRequest(request: PrecheckRequest, userId: string): Promise<PrecheckResponse> {
+    async precheck(request: PrecheckRequest, userId: string): Promise<PrecheckResponse> {
         this.logger.debug('Prechecking request', { tool: request.tool, scope: request.scope, userId });
-        return this.precheck.checkRequest(request, userId);
+        return this.precheckClient.checkRequest(request, userId);
     }
 
     /**
@@ -70,7 +73,7 @@ export class GovernsAIClient {
      */
     async getBudgetContext(userId: string): Promise<BudgetContext> {
         this.logger.debug('Fetching budget context', { userId });
-        return this.budget.getBudgetContext(userId);
+        return this.budgetClient.getBudgetContext(userId);
     }
 
     /**
@@ -82,13 +85,13 @@ export class GovernsAIClient {
             cost: usage.cost,
             tool: usage.tool
         });
-        return this.budget.recordUsage(usage);
+        return this.budgetClient.recordUsage(usage);
     }
 
     /**
      * Create a confirmation request for sensitive operations
      */
-    async createConfirmation(
+    async confirm(
         correlationId: string,
         requestType: 'tool_call' | 'chat' | 'mcp',
         requestDesc: string,
@@ -96,7 +99,7 @@ export class GovernsAIClient {
         reasons?: string[]
     ) {
         this.logger.debug('Creating confirmation', { correlationId, requestType });
-        return this.confirmation.createConfirmation({
+        return this.confirmationClient.createConfirmation({
             correlationId,
             requestType,
             requestDesc,
@@ -110,7 +113,7 @@ export class GovernsAIClient {
      */
     async getConfirmationStatus(correlationId: string) {
         this.logger.debug('Getting confirmation status', { correlationId });
-        return this.confirmation.getConfirmationStatus(correlationId);
+        return this.confirmationClient.getConfirmationStatus(correlationId);
     }
 
     /**
@@ -123,7 +126,7 @@ export class GovernsAIClient {
         timeout: number = 300000
     ): Promise<void> {
         this.logger.debug('Polling confirmation', { correlationId, interval, timeout });
-        return this.confirmation.pollConfirmation(correlationId, callback, interval, timeout);
+        return this.confirmationClient.pollConfirmation(correlationId, callback, interval, timeout);
     }
 
     // ============================================================================
@@ -142,11 +145,20 @@ export class GovernsAIClient {
         this.httpClient = new HTTPClient(this.config);
 
         // Update all feature clients
-        this['precheck'].updateConfig(this.config);
-        this['confirmation'].updateConfig(this.config);
-        this['budget'].updateConfig(this.config);
-        this['tools'].updateConfig(this.config);
-        this['analytics'].updateConfig(this.config);
+        this['precheckClient'].updateConfig(this.config);
+        this['confirmationClient'].updateConfig(this.config);
+        this['budgetClient'].updateConfig(this.config);
+        this['toolsClient'].updateConfig(this.config);
+        this['analyticsClient'].updateConfig(this.config);
+        this['context'].updateConfig(this.config);
+
+        // reassign http client on feature clients if needed
+        (this['precheckClient'] as any)['httpClient'] = this.httpClient;
+        (this['confirmationClient'] as any)['httpClient'] = this.httpClient;
+        (this['budgetClient'] as any)['httpClient'] = this.httpClient;
+        (this['toolsClient'] as any)['httpClient'] = this.httpClient;
+        (this['analyticsClient'] as any)['httpClient'] = this.httpClient;
+        (this['context'] as any)['httpClient'] = this.httpClient;
     }
 
     /**
@@ -300,25 +312,31 @@ export function createClient(config: GovernsAIConfig): GovernsAIClient {
  * Create a client from environment variables
  */
 export function createClientFromEnv(): GovernsAIClient {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const env = ((globalThis as any).process && (globalThis as any).process.env) || {};
     const config: GovernsAIConfig = {
-        apiKey: process.env['GOVERNS_API_KEY'] || '',
-        baseUrl: process.env['GOVERNS_BASE_URL'] || 'http://localhost:3002',
-        orgId: process.env['GOVERNS_ORG_ID'] || '',
+        apiKey: env['GOVERNS_API_KEY'] || '',
+        baseUrl: env['GOVERNS_BASE_URL'] || '',
+        orgId: env['GOVERNS_ORG_ID'] || '',
     };
-    if (process.env['GOVERNS_TIMEOUT']) {
-        config.timeout = parseInt(process.env['GOVERNS_TIMEOUT']);
+    if (env['GOVERNS_TIMEOUT']) {
+        config.timeout = parseInt(env['GOVERNS_TIMEOUT']);
     }
-    if (process.env['GOVERNS_RETRIES']) {
-        config.retries = parseInt(process.env['GOVERNS_RETRIES']);
+    if (env['GOVERNS_RETRIES']) {
+        config.retries = parseInt(env['GOVERNS_RETRIES']);
     }
-    if (process.env['GOVERNS_RETRY_DELAY']) {
-        config.retryDelay = parseInt(process.env['GOVERNS_RETRY_DELAY']);
+    if (env['GOVERNS_RETRY_DELAY']) {
+        config.retryDelay = parseInt(env['GOVERNS_RETRY_DELAY']);
     }
 
     if (!config.apiKey) {
-        throw new GovernsAIError(
-            'GOVERNS_API_KEY environment variable is required'
-        );
+        throw new GovernsAIError('GOVERNS_API_KEY environment variable is required');
+    }
+    if (!config.baseUrl) {
+        throw new GovernsAIError('GOVERNS_BASE_URL environment variable is required');
+    }
+    if (!config.orgId) {
+        throw new GovernsAIError('GOVERNS_ORG_ID environment variable is required');
     }
 
     return new GovernsAIClient(config as GovernsAIConfig);
