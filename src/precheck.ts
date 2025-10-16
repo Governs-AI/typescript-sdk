@@ -119,8 +119,8 @@ export class PrecheckClient {
             if (needsPolicy) {
                 tasks.push(
                     this.platformHttp.get<any>('/api/v1/policies').then((resp) => {
-                        // Attach full response or first policy; platform will validate
-                        enriched.policy_config = (resp?.policies?.[0] ?? resp) as any;
+                        const raw = (resp?.policies?.[0] ?? resp);
+                        enriched.policy_config = this.transformPolicyConfig(raw);
                     }).catch(() => { /* ignore enrich errors */ })
                 );
             }
@@ -154,6 +154,49 @@ export class PrecheckClient {
         } catch {
             return request;
         }
+    }
+
+    // Convert platform policy (camelCase) to precheck schema (snake_case)
+    private transformPolicyConfig(raw: any): any {
+        if (!raw || typeof raw !== 'object') return raw;
+
+        const map: any = {};
+        map.version = raw.version;
+        if (raw.model) map.model = raw.model;
+
+        // defaults
+        if (raw.defaults) {
+            map.defaults = {
+                ingress: raw.defaults.ingress,
+                egress: raw.defaults.egress,
+            };
+        }
+
+        // tool access
+        const toolAccessSrc = raw.tool_access || raw.toolAccess;
+        if (toolAccessSrc && typeof toolAccessSrc === 'object') {
+            map.tool_access = {};
+            Object.entries(toolAccessSrc).forEach(([toolName, rule]: any) => {
+                map.tool_access[toolName] = {
+                    direction: rule.direction,
+                    action: rule.action,
+                    ...(rule.allow_pii ? { allow_pii: rule.allow_pii } : {}),
+                };
+            });
+        }
+
+        // arrays and lists
+        map.deny_tools = raw.deny_tools || raw.denyTools || [];
+        if (raw.allow_tools || raw.allowTools) {
+            map.allow_tools = raw.allow_tools || raw.allowTools;
+        }
+        map.network_scopes = raw.network_scopes || raw.networkScopes || [];
+        map.network_tools = raw.network_tools || raw.networkTools || [];
+
+        // on_error
+        map.on_error = raw.on_error || raw.onError;
+
+        return map;
     }
 
     /**

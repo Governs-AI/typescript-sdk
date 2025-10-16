@@ -38,6 +38,7 @@ export interface ToolAccessRule {
 
 export interface PolicyConfig {
     version: string;
+    model?: string;
     defaults: PolicyDefaults;
     tool_access: Record<string, ToolAccessRule>;
     deny_tools: string[];
@@ -55,6 +56,7 @@ export interface ToolConfigMetadata {
         category: string;
         risk_level: "low" | "medium" | "high" | "critical";
         requires_approval?: boolean;
+        [key: string]: any;
     };
 }
 
@@ -65,6 +67,7 @@ export interface PrecheckRequest {
     payload?: any;
     tags?: string[];
     corr_id?: string;
+    user_id?: string;
     policy_config?: PolicyConfig;
     tool_config?: ToolConfigMetadata;
     budget_context?: any;
