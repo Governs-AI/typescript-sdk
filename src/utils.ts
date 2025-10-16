@@ -16,9 +16,11 @@ export { RetryConfig } from './errors';
 export class HTTPClient {
     private config: GovernsAIConfig;
     private defaultHeaders: Record<string, string>;
+    private customBaseUrl?: string | undefined;
 
-    constructor(config: GovernsAIConfig) {
+    constructor(config: GovernsAIConfig, customBaseUrl?: string) {
         this.config = config;
+        this.customBaseUrl = customBaseUrl;
         this.defaultHeaders = {
             'Content-Type': 'application/json',
             'X-Governs-Key': config.apiKey,
@@ -31,7 +33,8 @@ export class HTTPClient {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         options: any = {}
     ): Promise<T> {
-        const url = `${this.config.baseUrl}${endpoint}`;
+        const base = this.customBaseUrl ?? this.config.baseUrl;
+        const url = `${base}${endpoint}`;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const requestOptions: any = {
             ...options,

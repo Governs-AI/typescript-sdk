@@ -32,6 +32,7 @@ export class GovernsAIClient {
             {
                 apiKey: config.apiKey,
                 baseUrl: config.baseUrl,
+                precheckBaseUrl: config.precheckBaseUrl,
                 orgId: config.orgId,
                 timeout: 30000,
                 retries: 3,
@@ -44,11 +45,12 @@ export class GovernsAIClient {
         this.config = mergedConfig;
         this.logger = defaultLogger;
 
-        // Initialize HTTP client
+        // Initialize HTTP clients (platform + optional precheck)
         this.httpClient = new HTTPClient(this.config);
+        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl);
 
         // Initialize feature clients
-        this.precheckClient = new PrecheckClient(this.httpClient, this.config);
+        this.precheckClient = new PrecheckClient(precheckHttp, this.config);
         this.confirmationClient = new ConfirmationClient(this.httpClient, this.config);
         this.budgetClient = new BudgetClient(this.httpClient, this.config);
         this.toolsClient = new ToolClient(this.httpClient, this.config);
@@ -63,7 +65,7 @@ export class GovernsAIClient {
     /**
      * Precheck a request for governance compliance (spec name: precheck)
      */
-    async precheck(request: PrecheckRequest, userId: string): Promise<PrecheckResponse> {
+    async precheck(request: PrecheckRequest, userId?: string): Promise<PrecheckResponse> {
         this.logger.debug('Prechecking request', { tool: request.tool, scope: request.scope, userId });
         return this.precheckClient.checkRequest(request, userId);
     }
@@ -71,14 +73,14 @@ export class GovernsAIClient {
     /**
      * Back-compat alias used by consumers
      */
-    async precheckRequest(request: PrecheckRequest, userId: string): Promise<PrecheckResponse> {
+    async precheckRequest(request: PrecheckRequest, userId?: string): Promise<PrecheckResponse> {
         return this.precheck(request, userId);
     }
 
     /**
      * Get budget context for a specific user
      */
-    async getBudgetContext(userId: string): Promise<BudgetContext> {
+    async getBudgetContext(userId?: string): Promise<BudgetContext> {
         this.logger.debug('Fetching budget context', { userId });
         return this.budgetClient.getBudgetContext(userId);
     }
@@ -165,6 +167,7 @@ export class GovernsAIClient {
 
         // Recreate HTTP client with new config
         this.httpClient = new HTTPClient(this.config);
+        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl);
 
         // Update all feature clients
         this['precheckClient'].updateConfig(this.config);
@@ -175,7 +178,7 @@ export class GovernsAIClient {
         this['context'].updateConfig(this.config);
 
         // reassign http client on feature clients if needed
-        (this['precheckClient'] as any)['httpClient'] = this.httpClient;
+        (this['precheckClient'] as any)['httpClient'] = precheckHttp;
         (this['confirmationClient'] as any)['httpClient'] = this.httpClient;
         (this['budgetClient'] as any)['httpClient'] = this.httpClient;
         (this['toolsClient'] as any)['httpClient'] = this.httpClient;
@@ -339,6 +342,7 @@ export function createClientFromEnv(): GovernsAIClient {
     const config: GovernsAIConfig = {
         apiKey: env['GOVERNS_API_KEY'] || '',
         baseUrl: env['GOVERNS_BASE_URL'] || '',
+        precheckBaseUrl: env['GOVERNS_PRECHECK_BASE_URL'] || '',
         orgId: env['GOVERNS_ORG_ID'] || '',
     };
     if (env['GOVERNS_TIMEOUT']) {
@@ -356,6 +360,9 @@ export function createClientFromEnv(): GovernsAIClient {
     }
     if (!config.baseUrl) {
         throw new GovernsAIError('GOVERNS_BASE_URL environment variable is required');
+    }
+    if (!config.precheckBaseUrl) {
+        throw new GovernsAIError('GOVERNS_PRECHECK_BASE_URL environment variable is required');
     }
     if (!config.orgId) {
         throw new GovernsAIError('GOVERNS_ORG_ID environment variable is required');

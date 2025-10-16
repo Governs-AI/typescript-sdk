@@ -45,7 +45,7 @@ export class BudgetClient {
     /**
      * Get budget context for a specific user
      */
-    async getBudgetContext(_userId: string): Promise<BudgetContext> {
+    async getBudgetContext(_userId?: string): Promise<BudgetContext> {
         this.logger.debug('Fetching budget context');
 
         try {

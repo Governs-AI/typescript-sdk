@@ -28,10 +28,11 @@ import { GovernsAIClient, createClientFromEnv } from "@governs-ai/sdk";
 // Requires: GOVERNS_API_KEY, GOVERNS_BASE_URL, GOVERNS_ORG_ID
 const client = createClientFromEnv();
 
-// Or create client with explicit configuration (baseUrl required)
+// Or create client with explicit configuration (both URLs required)
 const client = new GovernsAIClient({
   apiKey: "your-api-key",
-  baseUrl: "https://your-platform-url", // required
+  baseUrl: "https://your-platform-url", // platform APIs
+  precheckBaseUrl: "https://your-precheck-url", // precheck-only APIs
   orgId: "org-456", // Organization context (static)
 });
 
@@ -39,8 +40,7 @@ const client = new GovernsAIClient({
 const isConnected = await client.testConnection();
 console.log("Connected:", isConnected);
 
-// Precheck a request for a specific user (userId is dynamic)
-const userId = "user-123";
+// Precheck a request
 const precheckResponse = await client.precheck(
   {
     tool: "model.chat",
@@ -49,7 +49,6 @@ const precheckResponse = await client.precheck(
     payload: { messages: [{ role: "user", content: "Hello" }] },
     tags: ["demo", "chat"],
   },
-  userId
 );
 
 if (precheckResponse.decision === "deny") {
@@ -71,6 +70,7 @@ if (precheckResponse.decision === "deny") {
 # Required
 GOVERNS_API_KEY=your-api-key
 GOVERNS_BASE_URL=https://your-platform-url
+GOVERNS_PRECHECK_BASE_URL=https://your-precheck-url
 GOVERNS_ORG_ID=org-456
 
 # Optional
@@ -113,8 +113,7 @@ const toolPrecheck = await client.precheckClient.checkToolCall(
   'weather_current',
   { latitude: 52.52, longitude: 13.41, location_name: 'Berlin' },
   'net.external',
-  undefined,
-  'user-123'
+  undefined
 );
 
 // Handle different decisions
@@ -182,13 +181,12 @@ const approvedConfirmation = await client.confirmationClient.waitForApproval(
 Track and manage AI usage costs:
 
 ```typescript
-// Get budget context
-const userId = 'user-123';
-const budgetContext = await client.getBudgetContext(userId);
+// Get budget context (identity derived from auth)
+const budgetContext = await client.getBudgetContext();
 console.log("Remaining budget:", budgetContext.remaining_budget);
 
 // Check if budget allows a cost
-const budgetStatus = await client.budgetClient.checkBudget(50.0, userId);
+const budgetStatus = await client.budgetClient.checkBudget(50.0);
 if (!budgetStatus.allowed) {
   console.log("Insufficient budget:", budgetStatus.reason);
 }
