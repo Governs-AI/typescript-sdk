@@ -193,18 +193,14 @@ if (!budgetStatus.allowed) {
   console.log("Insufficient budget:", budgetStatus.reason);
 }
 
-// Record usage after AI call
+// Record usage after AI call (v1 payload)
 await client.recordUsage({
-  userId: "user-123",
-  orgId: "org-456",
-  provider: "openai",
+  toolId: "chat",
   model: "gpt-4",
-  inputTokens: 100,
-  outputTokens: 50,
+  tokensIn: 100,
+  tokensOut: 50,
   cost: 0.15,
-  costType: "external",
-  tool: "chat",
-  correlationId: "corr-123",
+  metadata: { correlationId: "corr-123" },
 });
 
 // Get spend analytics
@@ -286,6 +282,38 @@ const dashboardData = await client.analyticsClient.getDashboardData(
   "org-slug",
   "30d"
 );
+```
+
+### Context Memory
+
+```typescript
+// Search context
+const results = await client.searchContext({
+  query: 'project spec',
+  scope: 'user',
+  limit: 20,
+});
+
+// Get recent conversation context
+const contexts = await client.getRecentContext({
+  userId: 'user-123',
+  limit: 20,
+  scope: 'user',
+});
+
+// Store context
+const saved = await client.context.storeContext({
+  content: 'Discussion summary...',
+  contentType: 'user_message',
+  agentId: 'agent-1',
+  visibility: 'private',
+});
+```
+
+### Policies
+
+```typescript
+const { policies } = await client.getPolicies();
 ```
 
 ## Error Handling

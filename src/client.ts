@@ -69,6 +69,13 @@ export class GovernsAIClient {
     }
 
     /**
+     * Back-compat alias used by consumers
+     */
+    async precheckRequest(request: PrecheckRequest, userId: string): Promise<PrecheckResponse> {
+        return this.precheck(request, userId);
+    }
+
+    /**
      * Get budget context for a specific user
      */
     async getBudgetContext(userId: string): Promise<BudgetContext> {
@@ -106,6 +113,21 @@ export class GovernsAIClient {
             requestPayload,
             reasons: reasons || [],
         });
+    }
+
+    // Policies
+    async getPolicies(): Promise<any> {
+        this.logger.debug('Fetching policies');
+        return this.httpClient.get('/api/v1/policies');
+    }
+
+    // Memory Shortcuts
+    async searchContext(input: { query: string; userId?: string; limit?: number; scope?: 'user' | 'org' | 'both' }) {
+        return this.context.searchContext(input);
+    }
+
+    async getRecentContext(input: { userId?: string; limit?: number; scope?: 'user' | 'org' }) {
+        return this.context.getRecentContext(input);
     }
 
     /**

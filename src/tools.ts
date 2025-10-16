@@ -43,12 +43,12 @@ export class ToolClient {
     /**
      * Register tools with the platform
      */
-    async registerTools(tools: Tool[]): Promise<void> {
+    async registerTools(tools: Tool[], _userId?: string): Promise<void> {
         this.logger.debug('Registering tools', { count: tools.length });
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/tools', { tools }),
+                () => this.httpClient.post('/api/v1/tools', { tools }),
                 'register tools'
             );
 

@@ -333,6 +333,7 @@ export interface SaveContextResponse {
 
 export interface ContextSearchInput {
     query: string;
+    userId?: string;
     agentId?: string;
     contentTypes?: string[];
     conversationId?: string;

@@ -40,7 +40,7 @@ export class ContextClient {
 
     async searchContext(input: ContextSearchInput): Promise<ContextSearchResultItem[]> {
         this.logger.debug('Searching context', { queryLen: input.query?.length, scope: input.scope });
-        const response = await this.httpClient.post<{ results: ContextSearchResultItem[] }>('/api/v1/context/search', input);
+        const response = await this.httpClient.post<{ success: boolean; results: ContextSearchResultItem[] }>('/api/v1/context/search', input);
         return response.results;
     }
 
@@ -65,8 +65,15 @@ export class ContextClient {
         if (input.limit !== undefined) qs.set('limit', String(input.limit));
         const suffix = qs.toString() ? `?${qs.toString()}` : '';
         const endpoint = `/api/v1/context/conversation/${input.conversationId}${suffix}`;
-        const response = await this.httpClient.get<{ items: ConversationItem[] }>(endpoint);
-        return response.items;
+        const response = await this.httpClient.get<{ success: boolean; contexts: ConversationItem[] }>(endpoint);
+        return response.contexts;
+    }
+
+    async getRecentContext(params: { userId?: string; limit?: number; scope?: 'user' | 'org' }): Promise<ContextSearchResultItem[]> {
+        const payload: any = { query: '', limit: params.limit ?? 20 };
+        if (params.userId) payload.userId = params.userId;
+        if (params.scope) payload.scope = params.scope;
+        return this.searchContext(payload);
     }
 
     async maybeSaveFromPrecheck(params: {

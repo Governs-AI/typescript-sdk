@@ -45,12 +45,12 @@ export class BudgetClient {
     /**
      * Get budget context for a specific user
      */
-    async getBudgetContext(userId: string): Promise<BudgetContext> {
-        this.logger.debug('Fetching budget context', { userId });
+    async getBudgetContext(_userId: string): Promise<BudgetContext> {
+        this.logger.debug('Fetching budget context');
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get<BudgetContext>(`/api/budget/context?userId=${userId}`),
+                () => this.httpClient.get<BudgetContext>(`/api/v1/budget/context`),
                 'get budget context'
             );
 
@@ -113,19 +113,25 @@ export class BudgetClient {
     /**
      * Record usage after an AI operation
      */
-    async recordUsage(usage: UsageRecord): Promise<void> {
+    // Accepts legacy UsageRecord; maps to v1 payload
+    async recordUsage(usage: any): Promise<void> {
         this.logger.debug('Recording usage', {
-            model: usage.model,
-            cost: usage.cost,
-            tool: usage.tool,
-            correlationId: usage.correlationId
+            model: usage?.model,
+            cost: usage?.cost,
+            tool: usage?.tool || usage?.toolId,
+            correlationId: usage?.correlationId
         });
 
         try {
-            await this.withRetry(
-                () => this.httpClient.post('/api/usage', usage),
-                'record usage'
-            );
+            const payload = {
+                toolId: usage?.toolId || usage?.tool,
+                model: usage?.model,
+                tokensIn: usage?.tokensIn ?? usage?.inputTokens,
+                tokensOut: usage?.tokensOut ?? usage?.outputTokens,
+                cost: usage?.cost,
+                metadata: usage?.metadata,
+            };
+            await this.withRetry(() => this.httpClient.post('/api/v1/usage', payload), 'record usage');
 
             this.logger.info('Usage recorded successfully', {
                 model: usage.model,
