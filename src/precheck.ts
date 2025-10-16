@@ -18,12 +18,14 @@ import {
 import { HTTPClient, generateCorrelationId, defaultLogger, Logger } from './utils';
 
 export class PrecheckClient {
-    private httpClient: HTTPClient;
+    private httpClient: HTTPClient; // points to precheckBaseUrl (or baseUrl fallback)
+    private platformHttp: HTTPClient; // points to platform baseUrl
     private config: GovernsAIConfig;
     private logger: Logger;
 
-    constructor(httpClient: HTTPClient, config: GovernsAIConfig) {
-        this.httpClient = httpClient;
+    constructor(precheckHttpClient: HTTPClient, config: GovernsAIConfig, platformHttpClient?: HTTPClient) {
+        this.httpClient = precheckHttpClient;
+        this.platformHttp = platformHttpClient || precheckHttpClient;
         this.config = config;
         this.logger = defaultLogger;
     }
@@ -51,7 +53,10 @@ export class PrecheckClient {
         });
 
         // Add userId to request if provided
-        const requestWithUser = userId ? { ...request, userId } : request;
+        let requestWithUser: PrecheckRequest | (PrecheckRequest & { userId: string }) = userId ? { ...request, userId } as any : request;
+
+        // Enrich request with platform-derived configs if missing
+        requestWithUser = await this.enrichPrecheckRequest(requestWithUser);
 
         try {
             const response = await this.withRetry(
@@ -96,6 +101,59 @@ export class PrecheckClient {
         };
 
         return this.checkRequest(request, userId);
+    }
+
+    private async enrichPrecheckRequest(request: PrecheckRequest): Promise<PrecheckRequest> {
+        const needsPolicy = !request.policy_config;
+        const needsTool = !request.tool_config && !!request.tool;
+        const needsBudget = !request.budget_context;
+
+        if (!needsPolicy && !needsTool && !needsBudget) {
+            return request;
+        }
+
+        try {
+            const tasks: Array<Promise<void>> = [];
+            const enriched: any = { ...request };
+
+            if (needsPolicy) {
+                tasks.push(
+                    this.platformHttp.get<any>('/api/v1/policies').then((resp) => {
+                        // Attach full response or first policy; platform will validate
+                        enriched.policy_config = (resp?.policies?.[0] ?? resp) as any;
+                    }).catch(() => { /* ignore enrich errors */ })
+                );
+            }
+
+            if (needsTool) {
+                tasks.push(
+                    this.platformHttp.get<any>(`/api/v1/tools/${request.tool}/metadata`).then((resp) => {
+                        const meta = resp?.metadata;
+                        if (meta) {
+                            enriched.tool_config = meta as any;
+                        }
+                    }).catch(() => { /* ignore enrich errors */ })
+                );
+            }
+
+            if (needsBudget) {
+                tasks.push(
+                    this.platformHttp.get<any>('/api/v1/budget/context').then((resp) => {
+                        if (resp) {
+                            enriched.budget_context = resp;
+                        }
+                    }).catch(() => { /* ignore enrich errors */ })
+                );
+            }
+
+            if (tasks.length > 0) {
+                await Promise.all(tasks);
+            }
+
+            return enriched as PrecheckRequest;
+        } catch {
+            return request;
+        }
     }
 
     /**

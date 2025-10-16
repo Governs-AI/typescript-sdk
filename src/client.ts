@@ -49,7 +49,7 @@ export class GovernsAIClient {
         const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl || this.config.baseUrl);
 
         // Initialize feature clients
-        this.precheckClient = new PrecheckClient(precheckHttp, this.config);
+        this.precheckClient = new PrecheckClient(precheckHttp, this.config, this.httpClient);
         this.confirmationClient = new ConfirmationClient(this.httpClient, this.config);
         this.budgetClient = new BudgetClient(this.httpClient, this.config);
         this.toolsClient = new ToolClient(this.httpClient, this.config);
@@ -178,6 +178,7 @@ export class GovernsAIClient {
 
         // reassign http client on feature clients if needed
         (this['precheckClient'] as any)['httpClient'] = precheckHttp;
+        (this['precheckClient'] as any)['platformHttp'] = this.httpClient;
         (this['confirmationClient'] as any)['httpClient'] = this.httpClient;
         (this['budgetClient'] as any)['httpClient'] = this.httpClient;
         (this['toolsClient'] as any)['httpClient'] = this.httpClient;
