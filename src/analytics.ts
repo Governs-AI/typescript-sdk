@@ -52,7 +52,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString(filters);
             const response = await this.withRetry(
-                () => this.httpClient.get<DecisionData>(`/api/decisions${queryParams}`),
+                () => this.httpClient.get<DecisionData>(`/api/v1/decisions${queryParams}`),
                 'get decision analytics'
             );
 
@@ -86,7 +86,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString({ timeRange, includeStats: true });
             const response = await this.withRetry(
-                () => this.httpClient.get<DecisionData>(`/api/decisions${queryParams}`),
+                () => this.httpClient.get<DecisionData>(`/api/v1/decisions${queryParams}`),
                 'get decision statistics'
             );
 
@@ -119,7 +119,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString(filters);
             const response = await this.withRetry(
-                () => this.httpClient.get<ToolCallData>(`/api/toolcalls${queryParams}`),
+                () => this.httpClient.get<ToolCallData>(`/api/v1/toolcalls${queryParams}`),
                 'get tool call analytics'
             );
 
@@ -181,7 +181,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<SpendData>(`/api/spend${queryParams}`),
+                () => this.httpClient.get<SpendData>(`/api/v1/spend${queryParams}`),
                 'get spend analytics'
             );
 
@@ -211,7 +211,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/spend/tool-costs${queryParams}`),
+                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/v1/spend/tool-costs${queryParams}`),
                 'get spend by tool'
             );
 
@@ -239,7 +239,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/spend/model-costs${queryParams}`),
+                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/v1/spend/model-costs${queryParams}`),
                 'get spend by model'
             );
 
@@ -290,7 +290,7 @@ export class AnalyticsClient {
         try {
             const queryParams = buildQueryString(filters);
             const response = await this.withRetry(
-                () => this.httpClient.get<{ records: UsageRecord[] }>(`/api/usage${queryParams}`),
+                () => this.httpClient.get<{ records: UsageRecord[] }>(`/api/v1/usage${queryParams}`),
                 'get usage records'
             );
 
@@ -440,7 +440,7 @@ export class AnalyticsClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get('/api/profile'),
+                () => this.httpClient.get('/api/v1/profile'),
                 'get user profile'
             );
 
@@ -583,7 +583,7 @@ export class AnalyticsClient {
         const startTime = Date.now();
 
         try {
-            await this.httpClient.get('/api/decisions');
+            await this.httpClient.get('/api/v1/decisions');
             const responseTime = Date.now() - startTime;
 
             return {

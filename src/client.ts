@@ -203,7 +203,7 @@ export class GovernsAIClient {
     async testConnection(): Promise<boolean> {
         try {
             this.logger.debug('Testing connection to platform');
-            await this.httpClient.get('/api/profile');
+            await this.httpClient.get('/api/v1/profile');
             this.logger.info('Connection test successful');
             return true;
         } catch (error) {
@@ -277,7 +277,7 @@ export class GovernsAIClient {
 
     private async testBudgetService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/budget/context');
+            await this.httpClient.get('/api/v1/budget/context');
             return true;
         } catch {
             return false;
@@ -286,7 +286,7 @@ export class GovernsAIClient {
 
     private async testAnalyticsService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/decisions');
+            await this.httpClient.get('/api/v1/decisions');
             return true;
         } catch {
             return false;

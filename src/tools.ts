@@ -117,7 +117,7 @@ export class ToolClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get<{ metadata: ToolMetadata }>(`/api/tools/${toolName}/metadata`),
+                () => this.httpClient.get<{ metadata: ToolMetadata }>(`/api/v1/tools/${toolName}/metadata`),
                 'get tool metadata'
             );
 
@@ -176,7 +176,7 @@ export class ToolClient {
         try {
             const queryParams = buildQueryString(filters);
             const response = await this.withRetry(
-                () => this.httpClient.get<{ tools: Tool[] }>(`/api/tools${queryParams}`),
+                () => this.httpClient.get<{ tools: Tool[] }>(`/api/v1/tools${queryParams}`),
                 'list tools'
             );
 
@@ -494,7 +494,7 @@ export class ToolClient {
         const startTime = Date.now();
 
         try {
-            await this.httpClient.get('/api/tools');
+            await this.httpClient.get('/api/v1/tools');
             const responseTime = Date.now() - startTime;
 
             return {
