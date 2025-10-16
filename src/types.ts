@@ -12,7 +12,7 @@
 export interface GovernsAIConfig {
     apiKey: string;
     baseUrl: string; // required, no static default
-    precheckBaseUrl: string; // required - used for precheck-only endpoints
+    precheckBaseUrl?: string; // optional - if missing, precheck uses baseUrl
     orgId: string; // Required - organization context
     timeout?: number; // Default: 30000
     retries?: number; // Default: 3

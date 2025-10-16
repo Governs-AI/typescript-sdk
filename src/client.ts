@@ -32,7 +32,6 @@ export class GovernsAIClient {
             {
                 apiKey: config.apiKey,
                 baseUrl: config.baseUrl,
-                precheckBaseUrl: config.precheckBaseUrl,
                 orgId: config.orgId,
                 timeout: 30000,
                 retries: 3,
@@ -47,7 +46,7 @@ export class GovernsAIClient {
 
         // Initialize HTTP clients (platform + optional precheck)
         this.httpClient = new HTTPClient(this.config);
-        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl);
+        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl || this.config.baseUrl);
 
         // Initialize feature clients
         this.precheckClient = new PrecheckClient(precheckHttp, this.config);
@@ -167,7 +166,7 @@ export class GovernsAIClient {
 
         // Recreate HTTP client with new config
         this.httpClient = new HTTPClient(this.config);
-        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl);
+        const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl || this.config.baseUrl);
 
         // Update all feature clients
         this['precheckClient'].updateConfig(this.config);
@@ -361,9 +360,7 @@ export function createClientFromEnv(): GovernsAIClient {
     if (!config.baseUrl) {
         throw new GovernsAIError('GOVERNS_BASE_URL environment variable is required');
     }
-    if (!config.precheckBaseUrl) {
-        throw new GovernsAIError('GOVERNS_PRECHECK_BASE_URL environment variable is required');
-    }
+    // precheckBaseUrl is optional; falls back to baseUrl
     if (!config.orgId) {
         throw new GovernsAIError('GOVERNS_ORG_ID environment variable is required');
     }
