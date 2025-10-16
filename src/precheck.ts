@@ -216,9 +216,7 @@ export class PrecheckClient {
     createChatPrecheckRequest(
         messages: Message[],
         provider: string,
-        correlationId?: string,
-        policyConfig?: any,
-        toolConfig?: any
+        correlationId?: string
     ): PrecheckRequest {
         const lastUserMessage = messages
             .filter(msg => msg.role === 'user')
@@ -231,8 +229,6 @@ export class PrecheckClient {
             payload: { messages, provider },
             tags: ['sdk', 'chat'],
             corr_id: correlationId || generateCorrelationId(),
-            policy_config: policyConfig,
-            tool_config: toolConfig,
         };
     }
 
@@ -242,36 +238,15 @@ export class PrecheckClient {
     createMCPPrecheckRequest(
         tool: string,
         args: Record<string, any>,
-        correlationId?: string,
-        policyConfig?: any,
-        toolConfig?: any,
-        budgetContext?: any
+        correlationId?: string
     ): PrecheckRequest {
-        // Extract purchase amount from args for payment tools
-        let enhancedToolConfig = { ...toolConfig };
-        if (tool === 'payment_process' && args['amount']) {
-            enhancedToolConfig = {
-                ...toolConfig,
-                metadata: {
-                    ...toolConfig?.metadata,
-                    purchase_amount: Number(args['amount']),
-                    amount: Number(args['amount']),
-                    currency: args['currency'] || 'USD',
-                    description: args['description'] || 'Payment transaction',
-                }
-            };
-        }
-
         return {
             tool,
-            scope: enhancedToolConfig?.scope || 'net.external',
+            scope: 'net.external',
             raw_text: `MCP Tool Call: ${tool} with arguments: ${JSON.stringify(args)}`,
             payload: { tool, args },
             tags: ['sdk', 'mcp'],
             corr_id: correlationId || generateCorrelationId(),
-            policy_config: policyConfig,
-            tool_config: enhancedToolConfig,
-            budget_context: budgetContext,
         };
     }
 
