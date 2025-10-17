@@ -7,8 +7,6 @@ import {
     SaveContextExplicitInput,
     StoreContextInput,
     SaveContextResponse,
-    ContextSearchInput,
-    ContextSearchResultItem,
     ConversationSummary,
     PrecheckResponse,
 } from './types';
@@ -35,12 +33,6 @@ export class ContextClient {
     async storeContext(input: StoreContextInput): Promise<SaveContextResponse> {
         this.logger.debug('Storing context (with precheck on server)', { agentId: input.agentId, contentType: input.contentType });
         return this.httpClient.post<SaveContextResponse>('/api/v1/context', input);
-    }
-
-    async searchContext(input: ContextSearchInput): Promise<ContextSearchResultItem[]> {
-        this.logger.debug('Searching context', { queryLen: input.query?.length, scope: input.scope });
-        const response = await this.httpClient.post<{ success: boolean; results: ContextSearchResultItem[] }>('/api/v1/context/search', input);
-        return response.results;
     }
 
     /** LLM-optimized context search (compressed format using summaries only) */
@@ -106,11 +98,21 @@ export class ContextClient {
         return response.contexts;
     }
 
-    async getRecentContext(params: { userId?: string; limit?: number; scope?: 'user' | 'org' }): Promise<ContextSearchResultItem[]> {
-        const payload: any = { query: '', limit: params.limit ?? 20 };
-        if (params.userId) payload.userId = params.userId;
-        if (params.scope) payload.scope = params.scope;
-        return this.searchContext(payload);
+    async getRecentContext(params: { userId?: string; limit?: number; scope?: 'user' | 'org' }): Promise<{
+        success: boolean;
+        context: string;
+        memoryCount: number;
+        highConfidence: number;
+        mediumConfidence: number;
+        lowConfidence: number;
+        tokenEstimate: number;
+    }> {
+        const input: any = { 
+            query: 'recent context', 
+            limit: params.limit ?? 20 
+        };
+        if (params.scope) input.scope = params.scope;
+        return this.searchContextLLM(input);
     }
 
     async maybeSaveFromPrecheck(params: {

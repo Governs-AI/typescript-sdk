@@ -123,8 +123,16 @@ export class GovernsAIClient {
     }
 
     // Memory Shortcuts
-    async searchContext(input: { query: string; userId?: string; limit?: number; scope?: 'user' | 'org' | 'both' }) {
-        return this.context.searchContext(input);
+    async searchContextLLM(input: { 
+        query: string; 
+        agentId?: string; 
+        contentTypes?: string[]; 
+        conversationId?: string; 
+        scope?: 'user' | 'org' | 'both'; 
+        limit?: number; 
+        threshold?: number; 
+    }) {
+        return this.context.searchContextLLM(input);
     }
 
     async getRecentContext(input: { userId?: string; limit?: number; scope?: 'user' | 'org' }) {
