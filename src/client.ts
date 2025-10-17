@@ -131,7 +131,15 @@ export class GovernsAIClient {
         scope?: 'user' | 'org' | 'both'; 
         limit?: number; 
         threshold?: number; 
-    }) {
+    }): Promise<{
+        success: boolean;
+        context: string;
+        memoryCount: number;
+        highConfidence: number;
+        mediumConfidence: number;
+        lowConfidence: number;
+        tokenEstimate: number;
+    }> {
         return this.context.searchContextLLM(input);
     }
 
