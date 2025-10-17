@@ -16,11 +16,12 @@ class ChatApplication {
         });
     }
 
-    async processMessage(messages: Message[], provider: string = 'openai'): Promise<{
+    async processMessage(messages: Message[], provider: string = 'openai', agentId: string = 'chat-agent'): Promise<{
         allowed: boolean;
         response?: string;
         confirmationRequired?: boolean;
         confirmationUrl?: string;
+        contextSaved?: boolean;
     }> {
         try {
             // Precheck the chat message
@@ -43,7 +44,18 @@ class ChatApplication {
                     // Record usage
                     await this.recordUsage(provider, 'gpt-4', 100, 50);
 
-                    return { allowed: true, response };
+                    // Check if precheck suggests saving context
+                    const contextResult = await this.client.context.maybeSaveFromPrecheck({
+                        precheck: precheckResponse,
+                        fallbackContent: messages[messages.length - 1]?.content,
+                        agentId,
+                        agentName: 'Chat Assistant',
+                        conversationId: 'conv-123',
+                        correlationId: `chat_${Date.now()}`,
+                        metadata: { provider, messageCount: messages.length },
+                    });
+
+                    return { allowed: true, response, contextSaved: contextResult.saved };
 
                 case 'deny':
                 case 'block':
@@ -110,6 +122,60 @@ class ChatApplication {
         }
     }
 
+    async searchMemory(query: string, agentId: string = 'chat-agent') {
+        try {
+            // Search for relevant context using LLM-optimized search
+            const searchResult = await this.client.context.searchContextLLM({
+                query,
+                agentId,
+                scope: 'user',
+                limit: 5,
+                threshold: 0.7,
+            });
+
+            console.log('Memory search results:', {
+                context: searchResult.context,
+                memoryCount: searchResult.memoryCount,
+                confidence: {
+                    high: searchResult.highConfidence,
+                    medium: searchResult.mediumConfidence,
+                    low: searchResult.lowConfidence,
+                },
+                tokenEstimate: searchResult.tokenEstimate,
+            });
+
+            return searchResult;
+        } catch (error) {
+            console.error('Failed to search memory:', error);
+            return null;
+        }
+    }
+
+    async getConversationHistory(conversationId: string, agentId: string = 'chat-agent') {
+        try {
+            // Get conversation context
+            const conversation = await this.client.context.getOrCreateConversation({
+                agentId,
+                agentName: 'Chat Assistant',
+                title: 'User Conversation',
+            });
+
+            const messages = await this.client.context.getConversationContext({
+                conversationId: conversation.id,
+                agentId,
+                limit: 20,
+            });
+
+            return {
+                conversation,
+                messages,
+            };
+        } catch (error) {
+            console.error('Failed to get conversation history:', error);
+            return null;
+        }
+    }
+
     async getAnalytics(timeRange: string = '30d') {
         try {
             const [decisions, spend, usage] = await Promise.all([
@@ -147,10 +213,25 @@ async function chatIntegrationExample() {
 
     if (result.allowed) {
         console.log('AI Response:', result.response);
+        if (result.contextSaved) {
+            console.log('Context was automatically saved based on precheck suggestions');
+        }
     } else if (result.confirmationRequired) {
         console.log('Confirmation required:', result.confirmationUrl);
     } else {
         console.log('Request blocked:', result.response);
+    }
+
+    // Search memory for relevant context
+    const memorySearch = await chatApp.searchMemory('project help', 'chat-agent');
+    if (memorySearch) {
+        console.log('Found relevant context:', memorySearch.context);
+    }
+
+    // Get conversation history
+    const history = await chatApp.getConversationHistory('conv-123', 'chat-agent');
+    if (history) {
+        console.log('Conversation history:', history.messages.length, 'messages');
     }
 
     // Get analytics

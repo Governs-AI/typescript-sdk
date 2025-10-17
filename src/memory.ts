@@ -10,7 +10,6 @@ import {
     ContextSearchInput,
     ContextSearchResultItem,
     ConversationSummary,
-    ConversationItem,
     PrecheckResponse,
 } from './types';
 import { HTTPClient, defaultLogger, Logger } from './utils';
@@ -44,13 +43,35 @@ export class ContextClient {
         return response.results;
     }
 
-    async searchCrossAgent(query: string, opts?: { limit?: number; threshold?: number; scope?: 'user' | 'org' | 'both'; }): Promise<ContextSearchResultItem[]> {
-        this.logger.debug('Cross-agent search', { queryLen: query.length, scope: opts?.scope });
-        const input: ContextSearchInput = { query } as ContextSearchInput;
-        if (typeof opts?.limit === 'number') (input as any).limit = opts.limit;
-        if (typeof opts?.threshold === 'number') (input as any).threshold = opts.threshold as number;
-        if (opts?.scope) (input as any).scope = opts.scope;
-        return this.searchContext(input);
+    /** LLM-optimized context search (compressed format using summaries only) */
+    async searchContextLLM(input: {
+        query: string;
+        agentId?: string;
+        contentTypes?: string[];
+        conversationId?: string;
+        scope?: 'user' | 'org' | 'both';
+        limit?: number;
+        threshold?: number; // default 0.5
+    }): Promise<{
+        success: boolean;
+        context: string; // Natural language compressed format (uses summaries)
+        memoryCount: number;
+        highConfidence: number;
+        mediumConfidence: number;
+        lowConfidence: number;
+        tokenEstimate: number;
+    }> {
+        this.logger.debug('Searching context for LLM', { queryLen: input.query.length, agentId: input.agentId });
+        return this.httpClient.post('/api/v1/context/search/llm', input);
+    }
+
+    async searchCrossAgent(query: string, opts?: { limit?: number; threshold?: number; scope?: 'user' | 'org' | 'both'; }): Promise<ReturnType<ContextClient['searchContextLLM']>> {
+        this.logger.debug('Cross-agent search (LLM format)', { queryLen: query.length, scope: opts?.scope });
+        const input: any = { query };
+        if (opts?.limit !== undefined) input.limit = opts.limit;
+        if (opts?.threshold !== undefined) input.threshold = opts.threshold;
+        if (opts?.scope !== undefined) input.scope = opts.scope;
+        return this.searchContextLLM(input);
     }
 
     async getOrCreateConversation(input: { agentId: string; agentName: string; title?: string; }): Promise<ConversationSummary> {
@@ -58,14 +79,30 @@ export class ContextClient {
         return this.httpClient.post<ConversationSummary>('/api/v1/context/conversation', input);
     }
 
-    async getConversationContext(input: { conversationId: string; agentId?: string; limit?: number; }): Promise<ConversationItem[]> {
+    async getConversationContext(input: { conversationId: string; agentId?: string; limit?: number; }): Promise<Array<{
+        id: string;
+        content: string;
+        contentType: string;
+        agentId?: string;
+        createdAt: string;
+        parentId?: string;
+        metadata?: Record<string, any>;
+    }>> {
         this.logger.debug('Get conversation context', { conversationId: input.conversationId });
         const qs = new URLSearchParams();
         if (input.agentId) qs.set('agentId', input.agentId);
         if (input.limit !== undefined) qs.set('limit', String(input.limit));
         const suffix = qs.toString() ? `?${qs.toString()}` : '';
         const endpoint = `/api/v1/context/conversation/${input.conversationId}${suffix}`;
-        const response = await this.httpClient.get<{ success: boolean; contexts: ConversationItem[] }>(endpoint);
+        const response = await this.httpClient.get<{ success: boolean; contexts: Array<{
+            id: string;
+            content: string;
+            contentType: string;
+            agentId?: string;
+            createdAt: string;
+            parentId?: string;
+            metadata?: Record<string, any>;
+        }> }>(endpoint);
         return response.contexts;
     }
 
