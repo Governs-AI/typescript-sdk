@@ -444,7 +444,25 @@ import {
 
 ## License
 
-MIT License - see LICENSE file for details.
+**MIT License** - This SDK is fully open source with no restrictions.
+
+You can:
+- ✅ Use commercially without attribution
+- ✅ Modify and redistribute
+- ✅ Integrate into proprietary software
+- ✅ Bundle with any project
+
+See [LICENSE](LICENSE) file for details.
+
+## Part of GovernsAI Open-Core
+
+This SDK is part of the GovernsAI open-core ecosystem:
+- **TypeScript SDK** (this package) - MIT
+- **Precheck Service** - MIT
+- **Browser Extension** - MIT
+- **Platform Console** - ELv2 (source-available)
+
+Learn more: [GovernsAI Licensing](https://docs.governsai.com/licensing)
 
 ## Support
 
@@ -452,3 +470,4 @@ For support and questions:
 
 - GitHub Issues: [Create an issue](https://github.com/governs-ai/typescript-sdk/issues)
 - Documentation: [SDK Documentation](https://docs.governsai.com/sdk)
+- Community: [GitHub Discussions](https://github.com/governs-ai/typescript-sdk/discussions)
