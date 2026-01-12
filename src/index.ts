@@ -13,6 +13,7 @@ export { BudgetClient } from './budget';
 export { ToolClient } from './tools';
 export { AnalyticsClient } from './analytics';
 export { ContextClient } from './memory';
+export { DocumentClient } from './documents';
 
 // Types
 export * from './types';

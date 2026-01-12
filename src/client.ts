@@ -12,6 +12,7 @@ import { BudgetClient } from './budget';
 import { ToolClient } from './tools';
 import { AnalyticsClient } from './analytics';
 import { ContextClient } from './memory';
+import { DocumentClient } from './documents';
 
 export class GovernsAIClient {
     private httpClient: HTTPClient;
@@ -25,6 +26,7 @@ export class GovernsAIClient {
     public readonly toolsClient: ToolClient;
     public readonly analyticsClient: AnalyticsClient;
     public readonly context: ContextClient;
+    public readonly documents: DocumentClient;
 
     constructor(config: GovernsAIConfig) {
         // Validate and merge configuration
@@ -55,6 +57,7 @@ export class GovernsAIClient {
         this.toolsClient = new ToolClient(this.httpClient, this.config);
         this.analyticsClient = new AnalyticsClient(this.httpClient, this.config);
         this.context = new ContextClient(this.httpClient, this.config);
+        this.documents = new DocumentClient(this.httpClient, this.config);
     }
 
     // ============================================================================
@@ -191,6 +194,7 @@ export class GovernsAIClient {
         this['toolsClient'].updateConfig(this.config);
         this['analyticsClient'].updateConfig(this.config);
         this['context'].updateConfig(this.config);
+        this['documents'].updateConfig(this.config);
 
         // reassign http client on feature clients if needed
         (this['precheckClient'] as any)['httpClient'] = precheckHttp;
@@ -200,6 +204,7 @@ export class GovernsAIClient {
         (this['toolsClient'] as any)['httpClient'] = this.httpClient;
         (this['analyticsClient'] as any)['httpClient'] = this.httpClient;
         (this['context'] as any)['httpClient'] = this.httpClient;
+        (this['documents'] as any)['httpClient'] = this.httpClient;
     }
 
     /**

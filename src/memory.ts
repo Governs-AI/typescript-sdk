@@ -1,5 +1,8 @@
 /**
  * ContextClient - Unified Context Memory APIs
+ *
+ * Supports both internal user IDs and external user IDs for easy integration
+ * with external applications.
  */
 
 import {
@@ -9,6 +12,10 @@ import {
     SaveContextResponse,
     ConversationSummary,
     PrecheckResponse,
+    StoreMemoryParams,
+    SearchMemoryParams,
+    MemorySearchResult,
+    ResolvedUser,
 } from './types';
 import { HTTPClient, defaultLogger, Logger } from './utils';
 
@@ -158,6 +165,157 @@ export class ContextClient {
             this.logger.error('maybeSaveFromPrecheck failed', error);
             // Do not throw; best-effort helper.
             return { saved: false };
+        }
+    }
+
+    // ====================================================================
+    // External User Memory Methods
+    // For external applications using their own user IDs
+    // ====================================================================
+
+    /**
+     * Store memory for an external user
+     * User will be auto-created if they don't exist
+     *
+     * @example
+     * ```typescript
+     * await client.context.storeMemory({
+     *   externalUserId: 'shopify-user-123',
+     *   externalSource: 'shopify',
+     *   content: 'User prefers blue widgets',
+     *   agentId: 'product-recommendations',
+     *   metadata: { source: 'checkout-page' }
+     * });
+     * ```
+     */
+    async storeMemory(params: StoreMemoryParams): Promise<SaveContextResponse> {
+        this.logger.debug('Storing memory for external user', {
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+        });
+
+        const payload: any = {
+            content: params.content,
+            contentType: params.contentType || 'user_message',
+            agentId: params.agentId || 'external-app',
+            agentName: params.agentName,
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+            metadata: params.metadata,
+            scope: params.scope || 'user',
+            visibility: params.visibility || 'private',
+        };
+
+        // Include optional user metadata for auto-creation
+        if (params.email) payload.email = params.email;
+        if (params.name) payload.name = params.name;
+
+        return this.httpClient.post<SaveContextResponse>('/api/v1/context', payload);
+    }
+
+    /**
+     * Search memories for an external user
+     *
+     * @example
+     * ```typescript
+     * const results = await client.context.searchMemory({
+     *   externalUserId: 'shopify-user-123',
+     *   externalSource: 'shopify',
+     *   query: 'product preferences',
+     *   limit: 10
+     * });
+     * ```
+     */
+    async searchMemory(params: SearchMemoryParams): Promise<MemorySearchResult> {
+        this.logger.debug('Searching memory for external user', {
+            externalUserId: params.externalUserId,
+            query: params.query,
+        });
+
+        const payload: any = {
+            query: params.query,
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+            limit: params.limit || 10,
+            threshold: params.threshold || 0.5,
+            scope: params.scope || 'user',
+        };
+
+        if (params.agentId) payload.agentId = params.agentId;
+        if (params.contentTypes) payload.contentTypes = params.contentTypes;
+
+        return this.httpClient.post<MemorySearchResult>('/api/v1/context/search', payload);
+    }
+
+    /**
+     * Resolve an external user ID to internal user ID
+     * This is usually not needed as storeMemory/searchMemory handle this automatically
+     *
+     * @example
+     * ```typescript
+     * const resolved = await client.context.resolveUser({
+     *   externalUserId: 'shopify-user-123',
+     *   externalSource: 'shopify'
+     * });
+     * console.log('Internal ID:', resolved.internalUserId);
+     * ```
+     */
+    async resolveUser(params: {
+        externalUserId: string;
+        externalSource?: string;
+        email?: string;
+        name?: string;
+    }): Promise<ResolvedUser> {
+        this.logger.debug('Resolving external user', {
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+        });
+
+        const payload: any = {
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+        };
+
+        if (params.email) payload.email = params.email;
+        if (params.name) payload.name = params.name;
+
+        return this.httpClient.post<ResolvedUser>('/api/v1/users/resolve', payload);
+    }
+
+    /**
+     * Get user info by external ID (without creating)
+     *
+     * @example
+     * ```typescript
+     * const user = await client.context.getUserByExternalId({
+     *   externalUserId: 'shopify-user-123',
+     *   externalSource: 'shopify'
+     * });
+     * ```
+     */
+    async getUserByExternalId(params: {
+        externalUserId: string;
+        externalSource?: string;
+    }): Promise<ResolvedUser['user'] | null> {
+        this.logger.debug('Looking up external user', {
+            externalUserId: params.externalUserId,
+            externalSource: params.externalSource || 'default',
+        });
+
+        const qs = new URLSearchParams();
+        qs.set('externalUserId', params.externalUserId);
+        qs.set('externalSource', params.externalSource || 'default');
+
+        try {
+            const response = await this.httpClient.get<{ success: boolean; user: ResolvedUser['user'] }>(
+                `/api/v1/users/resolve?${qs.toString()}`
+            );
+            return response.user;
+        } catch (error: any) {
+            if (error.status === 404) {
+                return null;
+            }
+            throw error;
         }
     }
 }

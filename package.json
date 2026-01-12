@@ -1,7 +1,7 @@
 {
   "name": "@governs-ai/sdk",
-  "version": "1.0.0-alpha.12",
-  "description": "TypeScript SDK for GovernsAI - AI governance platform",
+  "version": "1.0.0-alpha.13",
+  "description": "TypeScript SDK for GovernsAI - AI governance platform with unified memory service",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

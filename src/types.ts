@@ -536,3 +536,231 @@ export function isValidProvider(value: any): value is Provider {
         ['openai', 'ollama', 'anthropic', 'google'].includes(value);
 }
 
+// ============================================================================
+// External User Memory Types
+// For external applications using their own user IDs
+// ============================================================================
+
+/**
+ * Parameters for storing memory with an external user ID
+ */
+export interface StoreMemoryParams {
+    /** External application's user ID */
+    externalUserId: string;
+    /** Source system identifier (e.g., 'shopify', 'stripe', 'custom') */
+    externalSource?: string;
+    /** Memory content to store */
+    content: string;
+    /** Type of content (default: 'user_message') */
+    contentType?: string;
+    /** Agent or application identifier */
+    agentId?: string;
+    /** Human-readable agent name */
+    agentName?: string;
+    /** Additional metadata */
+    metadata?: Record<string, any>;
+    /** Memory scope ('user' or 'org') */
+    scope?: 'user' | 'org';
+    /** Visibility level */
+    visibility?: 'private' | 'team' | 'org';
+    /** Email for auto-created users */
+    email?: string;
+    /** Name for auto-created users */
+    name?: string;
+}
+
+/**
+ * Parameters for searching memories with an external user ID
+ */
+export interface SearchMemoryParams {
+    /** External application's user ID */
+    externalUserId: string;
+    /** Source system identifier */
+    externalSource?: string;
+    /** Search query */
+    query: string;
+    /** Agent or application identifier */
+    agentId?: string;
+    /** Filter by content types */
+    contentTypes?: string[];
+    /** Maximum number of results */
+    limit?: number;
+    /** Similarity threshold (0-1) */
+    threshold?: number;
+    /** Search scope */
+    scope?: 'user' | 'org' | 'both';
+}
+
+/**
+ * Memory search result
+ */
+export interface MemorySearchResult {
+    /** Search success status */
+    success: boolean;
+    /** Found memories */
+    memories: Array<{
+        id: string;
+        content: string;
+        summary?: string;
+        contentType: string;
+        agentId?: string;
+        createdAt: string;
+        metadata?: Record<string, any>;
+        similarity?: number;
+    }>;
+    /** Total number of results */
+    count: number;
+    /** Search metadata */
+    metadata?: {
+        highConfidence?: number;
+        mediumConfidence?: number;
+        lowConfidence?: number;
+        tokenEstimate?: number;
+    };
+}
+
+/**
+ * Resolved user information
+ */
+export interface ResolvedUser {
+    /** Internal user ID in GovernsAI system */
+    internalUserId: string;
+    /** Whether the user was created during resolution */
+    created: boolean;
+    /** User details */
+    user: {
+        id: string;
+        email: string;
+        name: string | null;
+        externalId: string | null;
+        externalSource: string | null;
+    };
+}
+
+// ============================================================================
+// Document Management Types
+// ============================================================================ 
+
+export type DocumentUploadFile =
+    | Buffer
+    | Uint8Array
+    | ArrayBuffer
+    | {
+        name?: string;
+        type?: string;
+        arrayBuffer?: () => Promise<ArrayBuffer>;
+    };
+
+export interface DocumentUploadParams {
+    /** File to upload (Buffer, ArrayBuffer, Uint8Array, or File-like) */
+    file: DocumentUploadFile;
+    /** Optional filename override */
+    filename?: string;
+    /** Optional content type override */
+    contentType?: string;
+    /** External application's user ID */
+    externalUserId?: string;
+    /** Source system identifier */
+    externalSource?: string;
+    /** Additional metadata stored on chunks */
+    metadata?: Record<string, any>;
+    /** Document scope ('user' or 'org') */
+    scope?: 'user' | 'org';
+    /** Visibility level */
+    visibility?: 'private' | 'team' | 'org';
+    /** Email for auto-created users */
+    email?: string;
+    /** Name for auto-created users */
+    name?: string;
+    /** Processing mode override ('sync' or 'async') */
+    processingMode?: 'sync' | 'async';
+}
+
+export interface DocumentUploadResponse {
+    success: boolean;
+    documentId: string;
+    status: 'processing' | 'completed' | 'failed';
+    chunkCount: number;
+    fileHash: string;
+}
+
+export interface DocumentChunk {
+    id: string;
+    chunkIndex: number;
+    content: string;
+    metadata: Record<string, any>;
+    createdAt: string;
+}
+
+export interface DocumentRecord {
+    id: string;
+    userId: string;
+    orgId: string;
+    externalUserId?: string | null;
+    externalSource?: string | null;
+    filename: string;
+    contentType: string;
+    fileSize: number;
+    fileHash: string;
+    storageUrl?: string | null;
+    status: string;
+    errorMessage?: string | null;
+    chunkCount: number;
+    scope: string;
+    visibility: string;
+    isArchived: boolean;
+    createdAt: string;
+    updatedAt: string;
+    expiresAt?: string | null;
+}
+
+export interface DocumentDetails extends DocumentRecord {
+    content?: string | null;
+    chunks?: DocumentChunk[];
+}
+
+export interface DocumentListResponse {
+    success: boolean;
+    documents: DocumentRecord[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+        hasMore: boolean;
+        totalPages: number;
+        currentPage: number;
+    };
+}
+
+export interface DocumentSearchParams {
+    query: string;
+    userId?: string;
+    externalUserId?: string;
+    externalSource?: string;
+    documentIds?: string[];
+    contentTypes?: string[];
+    limit?: number;
+    threshold?: number;
+}
+
+export interface DocumentSearchResult {
+    documentId: string;
+    chunkId: string;
+    chunkIndex: number;
+    content: string;
+    similarity: number;
+    metadata: Record<string, any>;
+    document: {
+        filename: string;
+        contentType: string;
+        userId: string;
+        externalUserId?: string | null;
+        externalSource?: string | null;
+        createdAt: string;
+    };
+}
+
+export interface DocumentSearchResponse {
+    success: boolean;
+    results: DocumentSearchResult[];
+}

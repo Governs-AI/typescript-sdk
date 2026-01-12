@@ -35,12 +35,23 @@ export class HTTPClient {
     ): Promise<T> {
         const base = this.customBaseUrl ?? this.config.baseUrl;
         const url = `${base}${endpoint}`;
+        const formDataCtor = (globalThis as any).FormData;
+        const isFormData = formDataCtor && options?.body instanceof formDataCtor;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mergedHeaders: Record<string, string> = {
+            ...this.defaultHeaders,
+            ...options.headers,
+        };
+
+        if (isFormData) {
+            delete mergedHeaders['Content-Type'];
+            delete mergedHeaders['content-type'];
+        }
+
         const requestOptions: any = {
             ...options,
             headers: {
-                ...this.defaultHeaders,
-                ...options.headers,
+                ...mergedHeaders,
             },
             // optional in Node; AbortSignal may not exist in some targets
             signal: (globalThis as any).AbortSignal?.timeout?.(this.config.timeout || 30000),
@@ -96,6 +107,15 @@ export class HTTPClient {
             ...options,
             method: 'POST',
             ...(data && { body: JSON.stringify(data) }),
+        });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async postFormData<T = any>(endpoint: string, formData: any, options: any = {}): Promise<T> {
+        return this.request<T>(endpoint, {
+            ...options,
+            method: 'POST',
+            body: formData,
         });
     }
 

@@ -9,6 +9,7 @@ A comprehensive TypeScript SDK for the GovernsAI platform, providing secure cont
 - **Budget Management**: Real-time budget checking and usage tracking
 - **Tool Management**: Tool registration and metadata handling
 - **Analytics**: Comprehensive analytics and monitoring
+- **Document Management**: Upload documents with OCR, chunking, and semantic search
 - **Type Safety**: Full TypeScript support with comprehensive type definitions
 - **Error Handling**: Robust error handling with retry logic
 - **Developer Experience**: Easy to use and well-documented
@@ -306,6 +307,99 @@ const saved = await client.context.storeContext({
   agentId: 'agent-1',
   visibility: 'private',
 });
+```
+
+### External User Memory (NEW)
+
+For external applications that want to use their own user IDs:
+
+```typescript
+// Store memory for your external user
+// User will be auto-created if they don't exist
+await client.context.storeMemory({
+  externalUserId: 'shopify-user-456',
+  externalSource: 'shopify', // Your application name
+  content: 'User prefers blue widgets and express shipping',
+  agentId: 'product-recommendations',
+  metadata: {
+    source: 'checkout-page',
+    timestamp: new Date().toISOString()
+  }
+});
+
+// Search memories for your external user
+const results = await client.context.searchMemory({
+  externalUserId: 'shopify-user-456',
+  externalSource: 'shopify',
+  query: 'shipping preferences',
+  limit: 10
+});
+
+console.log('Found memories:', results.memories);
+
+// Optional: Resolve external user to internal ID
+const resolved = await client.context.resolveUser({
+  externalUserId: 'shopify-user-456',
+  externalSource: 'shopify',
+  email: 'user@example.com', // Optional for auto-creation
+  name: 'John Doe'            // Optional for auto-creation
+});
+
+console.log('Internal ID:', resolved.internalUserId);
+console.log('Was created:', resolved.created);
+```
+
+**Key Features:**
+- **Auto-Provisioning**: Users are automatically created on first memory store
+- **External ID Mapping**: Use your own user IDs, we handle the mapping
+- **Multi-Source Support**: Multiple external apps can use the same platform
+- **Full Memory Features**: Vector search, RAG, context management included
+
+### Document Management (OCR + RAG)
+
+```typescript
+// Upload a document (sync by default)
+const upload = await client.documents.uploadDocument({
+  externalUserId: 'customer-123',
+  externalSource: 'support-portal',
+  file: myFileBuffer,
+  filename: 'invoice.pdf',
+  metadata: { caseId: 'case-456' },
+});
+
+console.log('Document status:', upload.status, upload.documentId);
+
+// Optionally upload async (requires Redis + DOCUMENT_PROCESSING_MODE=async)
+await client.documents.uploadDocument({
+  externalUserId: 'customer-123',
+  externalSource: 'support-portal',
+  file: myFileBuffer,
+  filename: 'receipt.pdf',
+  processingMode: 'async',
+});
+
+// Check status + chunks
+const document = await client.documents.getDocument(upload.documentId, {
+  includeChunks: true,
+});
+
+// List documents
+const list = await client.documents.listDocuments({
+  externalUserId: 'customer-123',
+  externalSource: 'support-portal',
+  limit: 25,
+});
+
+// Search across document chunks
+const results = await client.documents.searchDocuments({
+  externalUserId: 'customer-123',
+  externalSource: 'support-portal',
+  query: 'refund policy',
+  limit: 5,
+});
+
+// Delete a document
+await client.documents.deleteDocument(upload.documentId);
 ```
 
 ### Policies
