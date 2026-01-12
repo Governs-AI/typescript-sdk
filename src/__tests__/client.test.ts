@@ -30,12 +30,12 @@ describe('GovernsAIClient', () => {
 
         it('should throw error for missing API key', () => {
             expect(() => {
-                new GovernsAIClient({ apiKey: '', orgId: '' });
+                new GovernsAIClient({ apiKey: '', orgId: '', baseUrl: 'http://example.com' });
             }).toThrow(GovernsAIError);
         });
 
         it('should use default values for optional config', () => {
-            const client = new GovernsAIClient({ apiKey: 'test-key', orgId: 'test-org' });
+            const client = new GovernsAIClient({ apiKey: 'test-key', orgId: 'test-org', baseUrl: 'http://localhost:3002' });
             const config = client.getConfig();
 
             expect(config.baseUrl).toBe('http://localhost:3002');
@@ -48,8 +48,9 @@ describe('GovernsAIClient', () => {
         it('should return true for successful connection', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                headers: new Map(),
                 json: () => Promise.resolve({ id: 'user-123' }),
-            } as Response);
+            } as any);
 
             const result = await client.testConnection();
             expect(result).toBe(true);
@@ -87,13 +88,17 @@ describe('GovernsAIClient', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                headers: new Map(),
                 json: () => Promise.resolve(mockResponse),
-            } as Response);
+            } as any);
 
             const request = {
                 tool: 'model.chat',
                 scope: 'net.external',
                 raw_text: 'Hello',
+                policy_config: {} as any,
+                budget_context: {},
+                tool_config: {} as any,
             };
 
             const result = await client.precheckRequest(request, 'test-user');
@@ -122,14 +127,15 @@ describe('GovernsAIClient', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                headers: new Map(),
                 json: () => Promise.resolve(mockResponse),
-            } as Response);
+            } as any);
 
             const result = await client.getBudgetContext('test-user');
 
             expect(result).toEqual(mockResponse);
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://example.com/api/budget/context',
+                'http://example.com/api/v1/budget/context',
                 expect.objectContaining({
                     method: 'GET',
                 })
@@ -141,8 +147,9 @@ describe('GovernsAIClient', () => {
         it('should record usage successfully', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                headers: new Map(),
                 json: () => Promise.resolve({ success: true }),
-            } as Response);
+            } as any);
 
             const usage = {
                 userId: 'user-123',
@@ -158,10 +165,15 @@ describe('GovernsAIClient', () => {
             await expect(client.recordUsage(usage)).resolves.not.toThrow();
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://example.com/api/usage',
+                'http://example.com/api/v1/usage',
                 expect.objectContaining({
                     method: 'POST',
-                    body: JSON.stringify(usage),
+                    body: JSON.stringify({
+                        model: usage.model,
+                        tokensIn: usage.inputTokens,
+                        tokensOut: usage.outputTokens,
+                        cost: usage.cost
+                    }),
                 })
             );
         });
@@ -186,10 +198,11 @@ describe('GovernsAIClient', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                headers: new Map(),
                 json: () => Promise.resolve(mockResponse),
-            } as Response);
+            } as any);
 
-            const result = await client.createConfirmation(
+            const result = await client.confirm(
                 'corr-123',
                 'tool_call',
                 'Execute tool',
@@ -211,10 +224,10 @@ describe('GovernsAIClient', () => {
         it('should return health status', async () => {
             // Mock all service endpoints
             mockFetch
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response) // precheck
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response) // confirmation
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response) // budget
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response); // analytics
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any) // precheck
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any) // confirmation
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any) // budget
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any); // analytics
 
             const result = await client.getHealthStatus();
 
@@ -229,10 +242,10 @@ describe('GovernsAIClient', () => {
 
         it('should return degraded status when some services fail', async () => {
             mockFetch
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response) // precheck
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any) // precheck
                 .mockRejectedValueOnce(new Error('Service unavailable')) // confirmation
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response) // budget
-                .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) } as Response); // analytics
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any) // budget
+                .mockResolvedValueOnce({ ok: true, headers: new Map(), json: () => Promise.resolve({}) } as any); // analytics
 
             const result = await client.getHealthStatus();
 

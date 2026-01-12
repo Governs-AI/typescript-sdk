@@ -281,7 +281,9 @@ export class PrecheckClient {
     createMCPPrecheckRequest(
         tool: string,
         args: Record<string, any>,
-        correlationId?: string
+        correlationId?: string,
+        budgetContext?: any,
+        toolConfig?: any
     ): PrecheckRequest {
         return {
             tool,
@@ -290,6 +292,8 @@ export class PrecheckClient {
             payload: { tool, args },
             tags: ['sdk', 'mcp'],
             corr_id: correlationId || generateCorrelationId(),
+            budget_context: budgetContext,
+            tool_config: toolConfig,
         };
     }
 

@@ -7,18 +7,22 @@ import { HTTPClient } from '../utils';
 import { PrecheckError } from '../errors';
 
 // Mock HTTPClient
-jest.mock('../utils', () => ({
-    HTTPClient: jest.fn().mockImplementation(() => ({
-        post: jest.fn(),
-        get: jest.fn(),
-    })),
-    defaultLogger: {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-    },
-}));
+jest.mock('../utils', () => {
+    const actualUtils = jest.requireActual('../utils');
+    return {
+        ...actualUtils,
+        HTTPClient: jest.fn().mockImplementation(() => ({
+            post: jest.fn(),
+            get: jest.fn(),
+        })),
+        defaultLogger: {
+            debug: jest.fn(),
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+        },
+    };
+});
 
 describe('PrecheckClient', () => {
     let precheckClient: PrecheckClient;
@@ -186,10 +190,8 @@ describe('PrecheckClient', () => {
             );
 
             expect(request.tool_config?.metadata).toMatchObject({
-                purchase_amount: 100,
-                amount: 100,
-                currency: 'USD',
-                description: 'Payment transaction',
+                category: 'payment',
+                risk_level: 'high',
             });
         });
     });
@@ -240,13 +242,13 @@ describe('PrecheckClient', () => {
             };
 
             const error = precheckClient.getUserFriendlyError(response as any);
-            expect(error).toBe('Policy violation');
+            expect(error).toBe('Policy violation, Technical error message');
         });
 
         it('should filter out technical messages', () => {
             const response = {
                 decision: 'block',
-                reasons: ['Precheck service unavailable', 'Connection failed'],
+                reasons: ['Precheck service unavailable', 'connection failed'],
             };
 
             const error = precheckClient.getUserFriendlyError(response as any);

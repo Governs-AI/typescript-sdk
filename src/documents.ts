@@ -16,17 +16,15 @@ import { GovernsAIError } from './errors';
 
 export class DocumentClient {
     private httpClient: HTTPClient;
-    private config: GovernsAIConfig;
     private logger: Logger;
 
-    constructor(httpClient: HTTPClient, config: GovernsAIConfig) {
+    constructor(httpClient: HTTPClient, _config: GovernsAIConfig) {
         this.httpClient = httpClient;
-        this.config = config;
         this.logger = defaultLogger;
     }
 
-    updateConfig(config: GovernsAIConfig): void {
-        this.config = config;
+    updateConfig(_config: GovernsAIConfig): void {
+        // Config not currently used in DocumentClient, but kept for interface consistency
     }
 
     private async normalizeFileInput(params: DocumentUploadParams): Promise<{
