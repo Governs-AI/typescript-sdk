@@ -123,7 +123,6 @@ switch (precheckResponse.decision) {
     // Proceed with AI call
     break;
   case 'deny':
-  case 'block':
     // Block the request
     console.log('Request blocked:', precheckResponse.reasons);
     break;

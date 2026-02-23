@@ -160,7 +160,7 @@ export class BudgetClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/purchases', purchase),
+                () => this.httpClient.post('/api/v1/purchases', purchase),
                 'record purchase'
             );
 
@@ -190,7 +190,7 @@ export class BudgetClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get<{ limits: BudgetLimit[] }>('/api/spend/budget-limits'),
+                () => this.httpClient.get<{ limits: BudgetLimit[] }>('/api/v1/spend/budget-limits'),
                 'get budget limits'
             );
 
@@ -219,7 +219,7 @@ export class BudgetClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.post<BudgetLimit>('/api/spend/budget-limits', request),
+                () => this.httpClient.post<BudgetLimit>('/api/v1/spend/budget-limits', request),
                 'create budget limit'
             );
 
@@ -248,7 +248,7 @@ export class BudgetClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.put<BudgetLimit>(`/api/spend/budget-limits/${id}`, updates),
+                () => this.httpClient.put<BudgetLimit>(`/api/v1/spend/budget-limits/${id}`, updates),
                 'update budget limit'
             );
 
@@ -272,7 +272,7 @@ export class BudgetClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.delete(`/api/spend/budget-limits/${id}`),
+                () => this.httpClient.delete(`/api/v1/spend/budget-limits/${id}`),
                 'delete budget limit'
             );
 
@@ -309,7 +309,7 @@ export class BudgetClient {
         try {
             const queryParams = buildQueryString(filters);
             const response = await this.withRetry(
-                () => this.httpClient.get<{ records: UsageRecord[] }>(`/api/usage${queryParams}`),
+                () => this.httpClient.get<{ records: UsageRecord[] }>(`/api/v1/usage${queryParams}`),
                 'get usage records'
             );
 
@@ -344,7 +344,7 @@ export class BudgetClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<{ spend: any }>(`/api/spend${queryParams}`),
+                () => this.httpClient.get<{ spend: any }>(`/api/v1/spend${queryParams}`),
                 'get spend analytics'
             );
 
@@ -374,7 +374,7 @@ export class BudgetClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/spend/tool-costs${queryParams}`),
+                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/v1/spend/tool-costs${queryParams}`),
                 'get tool costs'
             );
 
@@ -399,7 +399,7 @@ export class BudgetClient {
         try {
             const queryParams = buildQueryString({ timeRange });
             const response = await this.withRetry(
-                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/spend/model-costs${queryParams}`),
+                () => this.httpClient.get<{ costs: Record<string, number> }>(`/api/v1/spend/model-costs${queryParams}`),
                 'get model costs'
             );
 
@@ -559,7 +559,7 @@ export class BudgetClient {
         const startTime = Date.now();
 
         try {
-            await this.httpClient.get('/api/budget/context');
+            await this.httpClient.get('/api/v1/health');
             const responseTime = Date.now() - startTime;
 
             return {

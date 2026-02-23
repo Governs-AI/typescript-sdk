@@ -218,6 +218,15 @@ describe('PrecheckClient', () => {
                 precheckClient.validatePrecheckResponse({ decision: 'invalid' });
             }).toThrow(PrecheckError);
         });
+
+        it('should normalize legacy block decisions to deny', () => {
+            const result = precheckClient.validatePrecheckResponse({
+                decision: 'block',
+                reasons: ['legacy value'],
+            });
+
+            expect(result.decision).toBe('deny');
+        });
     });
 
     describe('decision helpers', () => {
@@ -291,7 +300,7 @@ describe('PrecheckClient', () => {
 
             expect(results).toHaveLength(2);
             expect(results[0]?.decision).toBe('allow');
-            expect(results[1]?.decision).toBe('block');
+            expect(results[1]?.decision).toBe('deny');
             expect(results[1]?.metadata?.['error']).toBe(true);
         });
     });

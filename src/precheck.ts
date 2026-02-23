@@ -63,13 +63,14 @@ export class PrecheckClient {
                 () => this.httpClient.post<PrecheckResponse>('/api/v1/precheck', requestWithUser),
                 'precheck request'
             );
+            const normalizedResponse = this.normalizePrecheckResponse(response);
 
             this.logger.debug('Precheck response received', {
-                decision: response.decision,
-                reasons: response.reasons
+                decision: normalizedResponse.decision,
+                reasons: normalizedResponse.reasons
             });
 
-            return response;
+            return normalizedResponse;
         } catch (error) {
             this.logger.error('Precheck failed', error);
             throw createPrecheckError(
@@ -314,7 +315,22 @@ export class PrecheckClient {
             throw createPrecheckError(`Invalid decision: ${response.decision}`);
         }
 
-        return response as PrecheckResponse;
+        return this.normalizePrecheckResponse(response as PrecheckResponse);
+    }
+
+    private normalizePrecheckResponse(response: PrecheckResponse): PrecheckResponse {
+        return {
+            ...response,
+            decision: this.normalizeDecisionValue(response.decision as unknown as string) as any,
+        };
+    }
+
+    private normalizeDecisionValue(decision: string): string {
+        // Canonicalize legacy "block" values to "deny".
+        if (decision === 'block') {
+            return 'deny';
+        }
+        return decision;
     }
 
     /**
@@ -384,7 +400,7 @@ export class PrecheckClient {
 
                 // Add error response to maintain order
                 results.push({
-                    decision: 'block',
+                    decision: 'deny',
                     reasons: [`Precheck failed: ${error instanceof Error ? error.message : "Unknown error"}`],
                     metadata: { error: true, originalError: error instanceof Error ? error.message : "Unknown error" }
                 });
@@ -431,7 +447,7 @@ export class PrecheckClient {
         const startTime = Date.now();
 
         try {
-            await this.httpClient.get('/api/v1/precheck');
+            await this.httpClient.get('/api/v1/health');
             const responseTime = Date.now() - startTime;
 
             return {

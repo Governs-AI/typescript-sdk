@@ -58,7 +58,6 @@ class ChatApplication {
                     return { allowed: true, response, contextSaved: contextResult.saved };
 
                 case 'deny':
-                case 'block':
                     return {
                         allowed: false,
                         response: `Request blocked: ${precheckResponse.reasons?.join(', ')}`

@@ -283,7 +283,7 @@ export class GovernsAIClient {
 
     private async testPrecheckService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/v1/precheck');
+            await this.httpClient.get('/api/v1/health');
             return true;
         } catch {
             return false;
@@ -292,7 +292,7 @@ export class GovernsAIClient {
 
     private async testConfirmationService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/v1/confirmation');
+            await this.httpClient.get('/api/v1/health');
             return true;
         } catch {
             return false;
@@ -301,7 +301,7 @@ export class GovernsAIClient {
 
     private async testBudgetService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/v1/budget/context');
+            await this.httpClient.get('/api/v1/health');
             return true;
         } catch {
             return false;
@@ -310,7 +310,7 @@ export class GovernsAIClient {
 
     private async testAnalyticsService(): Promise<boolean> {
         try {
-            await this.httpClient.get('/api/v1/decisions');
+            await this.httpClient.get('/api/v1/health');
             return true;
         } catch {
             return false;

@@ -47,7 +47,6 @@ class ToolCallingApplication {
                     return { success: true, result };
 
                 case 'deny':
-                case 'block':
                     return {
                         success: false,
                         error: `Tool call blocked: ${precheckResponse.reasons?.join(', ')}`

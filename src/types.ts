@@ -23,7 +23,7 @@ export interface GovernsAIConfig {
 // Precheck Types
 // ============================================================================
 
-export type Decision = "allow" | "deny" | "block" | "confirm" | "redact";
+export type Decision = "allow" | "deny" | "confirm" | "redact";
 
 export interface PolicyDefaults {
     ingress: { action: string };
@@ -528,7 +528,7 @@ export interface MCPResponse {
 
 export function isValidDecision(value: any): value is Decision {
     return typeof value === 'string' &&
-        ['allow', 'deny', 'block', 'confirm', 'redact'].includes(value);
+        ['allow', 'deny', 'confirm', 'redact'].includes(value);
 }
 
 export function isValidProvider(value: any): value is Provider {
