@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Core TypeScript definitions for GovernsAI SDK
  * Based on the current API patterns from the platform

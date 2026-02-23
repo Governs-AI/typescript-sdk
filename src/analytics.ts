@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * AnalyticsClient - Handles analytics and reporting
  * Based on the current analytics API patterns from the platform

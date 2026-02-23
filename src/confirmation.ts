@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * ConfirmationClient - Handles user approval workflows for sensitive operations
  * Based on the current confirmation API patterns from the platform

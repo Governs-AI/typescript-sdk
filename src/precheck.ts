@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * PrecheckClient - Handles request validation and governance compliance
  * Based on the current precheck API patterns from the platform

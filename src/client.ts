@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Main GovernsAI SDK Client
  * Central client that orchestrates all SDK functionality

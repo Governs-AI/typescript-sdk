@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * BudgetClient - Handles budget management and usage tracking
  * Based on the current budget API patterns from the platform
