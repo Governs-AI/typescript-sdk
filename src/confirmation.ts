@@ -37,6 +37,10 @@ export class ConfirmationClient {
         this.config = config;
     }
 
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
+    }
+
     // ============================================================================
     // Core Confirmation Methods
     // ============================================================================

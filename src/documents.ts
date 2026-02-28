@@ -29,6 +29,10 @@ export class DocumentClient {
         // Config not currently used in DocumentClient, but kept for interface consistency
     }
 
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
+    }
+
     private async normalizeFileInput(params: DocumentUploadParams): Promise<{
         data: any;
         filename: string;

@@ -72,6 +72,32 @@ describe('GovernsAIClient', () => {
             expect(config.timeout).toBe(60000);
         });
 
+        it('should rewire HTTP clients with updated API key', async () => {
+            client.updateConfig({ apiKey: 'updated-key' });
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                headers: new Map(),
+                json: () => Promise.resolve({
+                    monthly_limit: 1000,
+                    current_spend: 100,
+                    remaining_budget: 900,
+                    budget_type: 'organization',
+                }),
+            } as any);
+
+            await client.getBudgetContext('test-user');
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                'http://example.com/api/v1/budget/context',
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        'X-Governs-Key': 'updated-key',
+                    }),
+                })
+            );
+        });
+
         it('should validate new configuration', () => {
             expect(() => {
                 client.updateConfig({ apiKey: '' });

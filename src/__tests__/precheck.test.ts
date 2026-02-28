@@ -266,6 +266,31 @@ describe('PrecheckClient', () => {
     });
 
     describe('batch operations', () => {
+        it('should process batch requests with bounded concurrency', async () => {
+            const requests = [
+                { tool: 'tool-1', scope: 'net.external', raw_text: 'one' },
+                { tool: 'tool-2', scope: 'net.external', raw_text: 'two' },
+                { tool: 'tool-3', scope: 'net.external', raw_text: 'three' },
+                { tool: 'tool-4', scope: 'net.external', raw_text: 'four' },
+            ];
+
+            let active = 0;
+            let maxActive = 0;
+            const spy = jest.spyOn(precheckClient, 'checkRequest').mockImplementation(async (request: any) => {
+                active += 1;
+                maxActive = Math.max(maxActive, active);
+                await new Promise((resolve) => setTimeout(resolve, 5));
+                active -= 1;
+                return { decision: 'allow', reasons: [request.tool] } as any;
+            });
+
+            const results = await precheckClient.checkBatch(requests as any, { concurrency: 2 });
+
+            expect(results).toHaveLength(4);
+            expect(maxActive).toBe(2);
+            spy.mockRestore();
+        });
+
         it('should check multiple requests in batch', async () => {
             const mockResponse = {
                 decision: 'allow',
@@ -302,6 +327,88 @@ describe('PrecheckClient', () => {
             expect(results[0]?.decision).toBe('allow');
             expect(results[1]?.decision).toBe('deny');
             expect(results[1]?.metadata?.['error']).toBe(true);
+        });
+    });
+
+    describe('enrichment resilience', () => {
+        it('should cache policy/tool/budget enrichment responses for repeated checks', async () => {
+            const precheckHttp = {
+                post: jest.fn().mockResolvedValue({ decision: 'allow', reasons: [] }),
+                get: jest.fn(),
+            } as any;
+            const platformHttp = {
+                get: jest.fn().mockImplementation((endpoint: string) => {
+                    if (endpoint === '/api/v1/policies') {
+                        return Promise.resolve({ policies: [{ version: 'v1' }] });
+                    }
+                    if (endpoint === '/api/v1/tools/model.chat/metadata') {
+                        return Promise.resolve({ metadata: { tool_name: 'model.chat' } });
+                    }
+                    if (endpoint === '/api/v1/budget/context') {
+                        return Promise.resolve({ monthly_limit: 100, current_spend: 10, remaining_budget: 90 });
+                    }
+                    return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
+                }),
+            } as any;
+
+            const cachedClient = new PrecheckClient(
+                precheckHttp,
+                {
+                    apiKey: 'test-api-key',
+                    baseUrl: 'http://localhost:3002',
+                    orgId: 'test-org',
+                    enrichmentCacheTtlMs: 60000,
+                },
+                platformHttp
+            );
+
+            const request = {
+                tool: 'model.chat',
+                scope: 'net.external',
+                raw_text: 'Hello',
+            };
+
+            await cachedClient.checkRequest(request as any);
+            await cachedClient.checkRequest(request as any);
+
+            expect(platformHttp.get).toHaveBeenCalledTimes(3);
+            expect(precheckHttp.post).toHaveBeenCalledTimes(2);
+        });
+
+        it('should fail fast on enrichment when the circuit breaker is open', async () => {
+            const precheckHttp = {
+                post: jest.fn().mockResolvedValue({ decision: 'allow', reasons: [] }),
+                get: jest.fn(),
+            } as any;
+            const platformHttp = {
+                get: jest.fn().mockRejectedValue(new Error('Platform unavailable')),
+            } as any;
+
+            const resilientClient = new PrecheckClient(
+                precheckHttp,
+                {
+                    apiKey: 'test-api-key',
+                    baseUrl: 'http://localhost:3002',
+                    orgId: 'test-org',
+                    enrichmentCircuitFailureThreshold: 1,
+                    enrichmentCircuitResetTimeoutMs: 60000,
+                },
+                platformHttp
+            );
+
+            const policyOnlyRequest = {
+                tool: 'model.chat',
+                scope: 'net.external',
+                raw_text: 'Hello',
+                tool_config: {} as any,
+                budget_context: {} as any,
+            };
+
+            await resilientClient.checkRequest(policyOnlyRequest);
+            await resilientClient.checkRequest(policyOnlyRequest);
+
+            expect(platformHttp.get).toHaveBeenCalledTimes(1);
+            expect(precheckHttp.post).toHaveBeenCalledTimes(2);
         });
     });
 });

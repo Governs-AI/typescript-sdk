@@ -34,6 +34,10 @@ export class ContextClient {
         // no-op for now; kept for interface consistency
     }
 
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
+    }
+
     async saveContextExplicit(input: SaveContextExplicitInput): Promise<SaveContextResponse> {
         this.logger.debug('Saving context explicitly', { agentId: input.agentId, contentType: input.contentType });
         return this.httpClient.post<SaveContextResponse>('/api/v1/context', input);
@@ -321,5 +325,4 @@ export class ContextClient {
         }
     }
 }
-
 

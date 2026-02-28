@@ -41,6 +41,10 @@ export class AnalyticsClient {
         this.config = config;
     }
 
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
+    }
+
     // ============================================================================
     // Decision Analytics
     // ============================================================================

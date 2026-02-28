@@ -38,6 +38,10 @@ export class ToolClient {
         this.config = config;
     }
 
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
+    }
+
     // ============================================================================
     // Core Tool Methods
     // ============================================================================
