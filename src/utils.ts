@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Utility functions for GovernsAI SDK
  * HTTP client, retry logic, and common utilities
@@ -208,6 +210,22 @@ export function validateConfig(config: GovernsAIConfig): void {
 
     if (config.retries && (config.retries < 0 || config.retries > 10)) {
         throw new GovernsAIError('Retries must be between 0 and 10');
+    }
+
+    if (config.precheckBatchConcurrency && config.precheckBatchConcurrency < 1) {
+        throw new GovernsAIError('precheckBatchConcurrency must be at least 1');
+    }
+
+    if (config.enrichmentCacheTtlMs && config.enrichmentCacheTtlMs < 1000) {
+        throw new GovernsAIError('enrichmentCacheTtlMs must be at least 1000ms');
+    }
+
+    if (config.enrichmentCircuitFailureThreshold && config.enrichmentCircuitFailureThreshold < 1) {
+        throw new GovernsAIError('enrichmentCircuitFailureThreshold must be at least 1');
+    }
+
+    if (config.enrichmentCircuitResetTimeoutMs && config.enrichmentCircuitResetTimeoutMs < 1000) {
+        throw new GovernsAIError('enrichmentCircuitResetTimeoutMs must be at least 1000ms');
     }
 }
 

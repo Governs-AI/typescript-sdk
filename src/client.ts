@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Main GovernsAI SDK Client
  * Central client that orchestrates all SDK functionality
@@ -38,6 +40,10 @@ export class GovernsAIClient {
                 timeout: 30000,
                 retries: 3,
                 retryDelay: 1000,
+                precheckBatchConcurrency: 5,
+                enrichmentCacheTtlMs: 60000,
+                enrichmentCircuitFailureThreshold: 3,
+                enrichmentCircuitResetTimeoutMs: 30000,
             },
             config
         );
@@ -188,23 +194,21 @@ export class GovernsAIClient {
         const precheckHttp = new HTTPClient(this.config, this.config.precheckBaseUrl || this.config.baseUrl);
 
         // Update all feature clients
-        this['precheckClient'].updateConfig(this.config);
-        this['confirmationClient'].updateConfig(this.config);
-        this['budgetClient'].updateConfig(this.config);
-        this['toolsClient'].updateConfig(this.config);
-        this['analyticsClient'].updateConfig(this.config);
-        this['context'].updateConfig(this.config);
-        this['documents'].updateConfig(this.config);
+        this.precheckClient.updateConfig(this.config);
+        this.confirmationClient.updateConfig(this.config);
+        this.budgetClient.updateConfig(this.config);
+        this.toolsClient.updateConfig(this.config);
+        this.analyticsClient.updateConfig(this.config);
+        this.context.updateConfig(this.config);
+        this.documents.updateConfig(this.config);
 
-        // reassign http client on feature clients if needed
-        (this['precheckClient'] as any)['httpClient'] = precheckHttp;
-        (this['precheckClient'] as any)['platformHttp'] = this.httpClient;
-        (this['confirmationClient'] as any)['httpClient'] = this.httpClient;
-        (this['budgetClient'] as any)['httpClient'] = this.httpClient;
-        (this['toolsClient'] as any)['httpClient'] = this.httpClient;
-        (this['analyticsClient'] as any)['httpClient'] = this.httpClient;
-        (this['context'] as any)['httpClient'] = this.httpClient;
-        (this['documents'] as any)['httpClient'] = this.httpClient;
+        this.precheckClient.setHttpClients(precheckHttp, this.httpClient);
+        this.confirmationClient.setHttpClient(this.httpClient);
+        this.budgetClient.setHttpClient(this.httpClient);
+        this.toolsClient.setHttpClient(this.httpClient);
+        this.analyticsClient.setHttpClient(this.httpClient);
+        this.context.setHttpClient(this.httpClient);
+        this.documents.setHttpClient(this.httpClient);
     }
 
     /**

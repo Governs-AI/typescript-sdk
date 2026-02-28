@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * DocumentClient - Document management APIs with OCR + RAG support
  */
@@ -25,6 +27,10 @@ export class DocumentClient {
 
     updateConfig(_config: GovernsAIConfig): void {
         // Config not currently used in DocumentClient, but kept for interface consistency
+    }
+
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
     }
 
     private async normalizeFileInput(params: DocumentUploadParams): Promise<{

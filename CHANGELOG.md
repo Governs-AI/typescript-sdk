@@ -1,39 +1,44 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.
 
-## [1.0.0-alpha.1] - 2024-01-XX
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
 
 ### Added
 
-- Initial release of GovernsAI TypeScript SDK
-- Core GovernsAIClient with configuration management
-- PrecheckClient for request validation and governance compliance
-- ConfirmationClient for WebAuthn-based approval workflows
-- BudgetClient for usage tracking and limit enforcement
-- ToolClient for tool registration and execution
-- AnalyticsClient for dashboard data and usage insights
-- Comprehensive TypeScript definitions
-- Error handling with retry logic and exponential backoff
-- Environment-based configuration
-- Usage examples and documentation
-- Jest testing framework setup
+- `PrecheckClient` now supports configurable batch concurrency via `precheckBatchConcurrency` and `checkBatch(..., { concurrency })`.
+- Added configurable enrichment controls:
+  - `enrichmentCacheTtlMs`
+  - `enrichmentCircuitFailureThreshold`
+  - `enrichmentCircuitResetTimeoutMs`
 
-### Features
+### Changed
 
-- Multi-user support with dynamic userId and static orgId
-- Robust error handling with custom error classes
-- Retry logic with exponential backoff and jitter
-- Type-safe API interactions
-- Modular client architecture
-- Comprehensive logging and debugging
+- `checkBatch` now uses `Promise.allSettled()` with bounded parallelism instead of serial processing.
+- `GovernsAIClient.updateConfig` no longer bypasses TypeScript privacy with bracket notation and `any` casts.
+- SDK enrichment now caches policy/tool/budget lookups (default TTL: 60s).
+- SDK enrichment now uses a circuit breaker to fail fast when platform enrichment endpoints are degraded.
 
-### Breaking Changes
+## [1.0.0-alpha.14] - 2026-02-28
 
-- None (initial release)
+### Added
 
-### Dependencies
+- Context memory client and document management client APIs.
+- External user memory helper workflows.
+- Document OCR + vector search support in SDK client surface.
 
-- TypeScript >= 4.5.0
-- Node.js >= 16.0.0
-- uuid ^9.0.0
+### Changed
+
+- Precheck response normalization now canonicalizes legacy blocking decisions to `deny`.
+- API route alignment updates for v1 endpoints and health checks.
+
+## [1.0.0-alpha.1] - 2024-01-15
+
+### Added
+
+- Initial alpha release of the GovernsAI TypeScript SDK.
+- Core `GovernsAIClient` with `precheck`, `confirmation`, `budget`, `tools`, and `analytics` clients.
+- Typed request/response models and shared HTTP utility layer.
+- Retry-aware error handling and SDK-level diagnostics.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * ToolClient - Handles tool management and execution
  * Based on the current tool API patterns from the platform
@@ -34,6 +36,10 @@ export class ToolClient {
      */
     updateConfig(config: GovernsAIConfig): void {
         this.config = config;
+    }
+
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
     }
 
     // ============================================================================

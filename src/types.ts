@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Core TypeScript definitions for GovernsAI SDK
  * Based on the current API patterns from the platform
@@ -17,6 +19,10 @@ export interface GovernsAIConfig {
     timeout?: number; // Default: 30000
     retries?: number; // Default: 3
     retryDelay?: number; // Default: 1000
+    precheckBatchConcurrency?: number; // Default: 5
+    enrichmentCacheTtlMs?: number; // Default: 60000
+    enrichmentCircuitFailureThreshold?: number; // Default: 3
+    enrichmentCircuitResetTimeoutMs?: number; // Default: 30000
 }
 
 // ============================================================================

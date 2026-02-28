@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * PrecheckClient - Handles request validation and governance compliance
  * Based on the current precheck API patterns from the platform
@@ -17,17 +19,36 @@ import {
 } from './errors';
 import { HTTPClient, generateCorrelationId, defaultLogger, Logger } from './utils';
 
+interface CacheEntry<T> {
+    value: T;
+    expiresAt: number;
+}
+
 export class PrecheckClient {
     private httpClient: HTTPClient; // points to precheckBaseUrl (or baseUrl fallback)
     private platformHttp: HTTPClient; // points to platform baseUrl
     private config: GovernsAIConfig;
     private logger: Logger;
+    private policyCache: CacheEntry<any> | undefined;
+    private budgetCache: CacheEntry<any> | undefined;
+    private toolMetadataCache: Map<string, CacheEntry<any>>;
+    private enrichmentCacheTtlMs: number;
+    private enrichmentCircuitFailureThreshold: number;
+    private enrichmentCircuitResetTimeoutMs: number;
+    private enrichmentCircuitFailureCount: number;
+    private enrichmentCircuitOpenUntil: number;
 
     constructor(precheckHttpClient: HTTPClient, config: GovernsAIConfig, platformHttpClient?: HTTPClient) {
         this.httpClient = precheckHttpClient;
         this.platformHttp = platformHttpClient || precheckHttpClient;
         this.config = config;
         this.logger = defaultLogger;
+        this.toolMetadataCache = new Map();
+        this.enrichmentCacheTtlMs = config.enrichmentCacheTtlMs ?? 60_000;
+        this.enrichmentCircuitFailureThreshold = config.enrichmentCircuitFailureThreshold ?? 3;
+        this.enrichmentCircuitResetTimeoutMs = config.enrichmentCircuitResetTimeoutMs ?? 30_000;
+        this.enrichmentCircuitFailureCount = 0;
+        this.enrichmentCircuitOpenUntil = 0;
     }
 
     /**
@@ -35,6 +56,15 @@ export class PrecheckClient {
      */
     updateConfig(config: GovernsAIConfig): void {
         this.config = config;
+        this.enrichmentCacheTtlMs = config.enrichmentCacheTtlMs ?? 60_000;
+        this.enrichmentCircuitFailureThreshold = config.enrichmentCircuitFailureThreshold ?? 3;
+        this.enrichmentCircuitResetTimeoutMs = config.enrichmentCircuitResetTimeoutMs ?? 30_000;
+    }
+
+    setHttpClients(precheckHttpClient: HTTPClient, platformHttpClient?: HTTPClient): void {
+        this.httpClient = precheckHttpClient;
+        this.platformHttp = platformHttpClient || precheckHttpClient;
+        this.clearEnrichmentCaches();
     }
 
     // ============================================================================
@@ -119,31 +149,31 @@ export class PrecheckClient {
 
             if (needsPolicy) {
                 tasks.push(
-                    this.platformHttp.get<any>('/api/v1/policies').then((resp) => {
-                        const raw = (resp?.policies?.[0] ?? resp);
-                        enriched.policy_config = this.transformPolicyConfig(raw);
-                    }).catch(() => { /* ignore enrich errors */ })
+                    this.getPolicyConfig().then((policyConfig) => {
+                        if (policyConfig) {
+                            enriched.policy_config = policyConfig;
+                        }
+                    })
                 );
             }
 
             if (needsTool) {
                 tasks.push(
-                    this.platformHttp.get<any>(`/api/v1/tools/${request.tool}/metadata`).then((resp) => {
-                        const meta = resp?.metadata;
-                        if (meta) {
-                            enriched.tool_config = meta as any;
+                    this.getToolMetadata(request.tool).then((toolMetadata) => {
+                        if (toolMetadata) {
+                            enriched.tool_config = toolMetadata;
                         }
-                    }).catch(() => { /* ignore enrich errors */ })
+                    })
                 );
             }
 
             if (needsBudget) {
                 tasks.push(
-                    this.platformHttp.get<any>('/api/v1/budget/context').then((resp) => {
-                        if (resp) {
-                            enriched.budget_context = resp;
+                    this.getBudgetContext().then((budgetContext) => {
+                        if (budgetContext) {
+                            enriched.budget_context = budgetContext;
                         }
-                    }).catch(() => { /* ignore enrich errors */ })
+                    })
                 );
             }
 
@@ -155,6 +185,144 @@ export class PrecheckClient {
         } catch {
             return request;
         }
+    }
+
+    private clearEnrichmentCaches(): void {
+        this.policyCache = undefined;
+        this.budgetCache = undefined;
+        this.toolMetadataCache.clear();
+    }
+
+    private getCacheValue<T>(entry?: CacheEntry<T>): T | undefined {
+        if (!entry) {
+            return undefined;
+        }
+
+        if (entry.expiresAt <= Date.now()) {
+            return undefined;
+        }
+
+        return entry.value;
+    }
+
+    private setCacheValue<T>(value: T): CacheEntry<T> {
+        return {
+            value,
+            expiresAt: Date.now() + this.enrichmentCacheTtlMs,
+        };
+    }
+
+    private async getPolicyConfig(): Promise<any | undefined> {
+        const cached = this.getCacheValue(this.policyCache);
+        if (cached) {
+            return cached;
+        }
+
+        const policyConfig = await this.runEnrichmentCall('policies', async () => {
+            const response = await this.platformHttp.get<any>('/api/v1/policies');
+            const raw = response?.policies?.[0] ?? response;
+            return this.transformPolicyConfig(raw);
+        });
+
+        if (policyConfig) {
+            this.policyCache = this.setCacheValue(policyConfig);
+        }
+
+        return policyConfig;
+    }
+
+    private async getToolMetadata(toolName: string): Promise<any | undefined> {
+        const cached = this.getCacheValue(this.toolMetadataCache.get(toolName));
+        if (cached) {
+            return cached;
+        }
+
+        const toolMetadata = await this.runEnrichmentCall(`tool:${toolName}`, async () => {
+            const response = await this.platformHttp.get<any>(`/api/v1/tools/${toolName}/metadata`);
+            return response?.metadata;
+        });
+
+        if (toolMetadata) {
+            this.toolMetadataCache.set(toolName, this.setCacheValue(toolMetadata));
+        }
+
+        return toolMetadata;
+    }
+
+    private async getBudgetContext(): Promise<any | undefined> {
+        const cached = this.getCacheValue(this.budgetCache);
+        if (cached) {
+            return cached;
+        }
+
+        const budgetContext = await this.runEnrichmentCall('budget:context', async () => {
+            return this.platformHttp.get<any>('/api/v1/budget/context');
+        });
+
+        if (budgetContext) {
+            this.budgetCache = this.setCacheValue(budgetContext);
+        }
+
+        return budgetContext;
+    }
+
+    private async runEnrichmentCall<T>(
+        operationName: string,
+        operation: () => Promise<T>,
+    ): Promise<T | undefined> {
+        if (this.isEnrichmentCircuitOpen()) {
+            this.logger.warn('Skipping enrichment call while circuit breaker is open', {
+                operationName,
+                reopenAt: new Date(this.enrichmentCircuitOpenUntil).toISOString(),
+            });
+            return undefined;
+        }
+
+        try {
+            const result = await operation();
+            this.recordEnrichmentCircuitSuccess();
+            return result;
+        } catch (error) {
+            this.recordEnrichmentCircuitFailure(error);
+            this.logger.warn('Enrichment call failed', {
+                operationName,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            return undefined;
+        }
+    }
+
+    private isEnrichmentCircuitOpen(): boolean {
+        if (this.enrichmentCircuitOpenUntil === 0) {
+            return false;
+        }
+        if (Date.now() >= this.enrichmentCircuitOpenUntil) {
+            this.enrichmentCircuitOpenUntil = 0;
+            this.enrichmentCircuitFailureCount = 0;
+            return false;
+        }
+        return true;
+    }
+
+    private recordEnrichmentCircuitSuccess(): void {
+        this.enrichmentCircuitFailureCount = 0;
+        this.enrichmentCircuitOpenUntil = 0;
+    }
+
+    private recordEnrichmentCircuitFailure(error: unknown): void {
+        this.enrichmentCircuitFailureCount += 1;
+
+        if (this.enrichmentCircuitFailureCount < this.enrichmentCircuitFailureThreshold) {
+            return;
+        }
+
+        this.enrichmentCircuitOpenUntil = Date.now() + this.enrichmentCircuitResetTimeoutMs;
+        this.enrichmentCircuitFailureCount = 0;
+
+        this.logger.warn('Enrichment circuit breaker opened', {
+            resetTimeoutMs: this.enrichmentCircuitResetTimeoutMs,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
     }
 
     // Convert platform policy (camelCase) to precheck schema (snake_case)
@@ -383,28 +551,55 @@ export class PrecheckClient {
     /**
      * Check multiple requests in batch
      */
-    async checkBatch(requests: PrecheckRequest[]): Promise<PrecheckResponse[]> {
+    async checkBatch(
+        requests: PrecheckRequest[],
+        options: { concurrency?: number } = {},
+    ): Promise<PrecheckResponse[]> {
         this.logger.debug('Checking batch of requests', { count: requests.length });
 
-        const results: PrecheckResponse[] = [];
+        if (requests.length === 0) {
+            return [];
+        }
 
-        for (const request of requests) {
-            try {
-                const response = await this.checkRequest(request);
-                results.push(response);
-            } catch (error) {
+        const concurrency = Math.max(
+            1,
+            options.concurrency ?? this.config.precheckBatchConcurrency ?? 5,
+        );
+        const results: PrecheckResponse[] = new Array(requests.length);
+
+        for (let start = 0; start < requests.length; start += concurrency) {
+            const chunk = requests.slice(start, start + concurrency);
+            const settled = await Promise.allSettled(
+                chunk.map((request) => this.checkRequest(request)),
+            );
+
+            settled.forEach((result, index) => {
+                const request = chunk[index];
+                const resultIndex = start + index;
+                if (!request) {
+                    return;
+                }
+
+                if (result.status === 'fulfilled') {
+                    results[resultIndex] = result.value;
+                    return;
+                }
+
+                const errorMessage = result.reason instanceof Error
+                    ? result.reason.message
+                    : 'Unknown error';
+
                 this.logger.error('Batch precheck failed for request', {
                     tool: request.tool,
-                    error: error instanceof Error ? error.message : "Unknown error"
+                    error: errorMessage,
                 });
 
-                // Add error response to maintain order
-                results.push({
+                results[resultIndex] = {
                     decision: 'deny',
-                    reasons: [`Precheck failed: ${error instanceof Error ? error.message : "Unknown error"}`],
-                    metadata: { error: true, originalError: error instanceof Error ? error.message : "Unknown error" }
-                });
-            }
+                    reasons: [`Precheck failed: ${errorMessage}`],
+                    metadata: { error: true, originalError: errorMessage },
+                };
+            });
         }
 
         return results;

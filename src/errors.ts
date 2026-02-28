@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * Error handling for GovernsAI SDK
  * Comprehensive error types with retry logic support

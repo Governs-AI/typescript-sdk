@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024 GovernsAI. All rights reserved.
 /**
  * ContextClient - Unified Context Memory APIs
  *
@@ -30,6 +32,10 @@ export class ContextClient {
 
     updateConfig(_config: GovernsAIConfig): void {
         // no-op for now; kept for interface consistency
+    }
+
+    setHttpClient(httpClient: HTTPClient): void {
+        this.httpClient = httpClient;
     }
 
     async saveContextExplicit(input: SaveContextExplicitInput): Promise<SaveContextResponse> {
@@ -319,5 +325,4 @@ export class ContextClient {
         }
     }
 }
-
 
