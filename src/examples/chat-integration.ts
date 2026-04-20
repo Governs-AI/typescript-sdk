@@ -37,7 +37,7 @@ class ChatApplication {
 
             // Handle different decisions
             switch (precheckResponse.decision) {
-                case 'allow':
+                case 'allow': {
                     // Proceed with AI call
                     const response = await this.callAI(messages, provider);
 
@@ -56,6 +56,7 @@ class ChatApplication {
                     });
 
                     return { allowed: true, response, contextSaved: contextResult.saved };
+                }
 
                 case 'deny':
                     return {
@@ -63,7 +64,7 @@ class ChatApplication {
                         response: `Request blocked: ${precheckResponse.reasons?.join(', ')}`
                     };
 
-                case 'confirm':
+                case 'confirm': {
                     // Create confirmation request
                     const confirmation = await this.client.confirm(
                         `chat_${Date.now()}`,
@@ -78,8 +79,9 @@ class ChatApplication {
                         confirmationRequired: true,
                         confirmationUrl: this.client.confirmationClient.getConfirmationUrl(confirmation.confirmation.correlationId),
                     };
+                }
 
-                case 'redact':
+                case 'redact': {
                     // Use redacted content
                     const redactedMessages = precheckResponse.content?.messages || messages;
                     const response2 = await this.callAI(redactedMessages, provider);
@@ -87,6 +89,7 @@ class ChatApplication {
                     await this.recordUsage(provider, 'gpt-4', 100, 50);
 
                     return { allowed: true, response: response2 };
+                }
 
                 default:
                     return { allowed: false, response: 'Unknown decision' };
@@ -196,7 +199,7 @@ class ChatApplication {
 }
 
 // Example usage
-async function chatIntegrationExample() {
+export async function chatIntegrationExample(): Promise<void> {
     const chatApp = new ChatApplication('your-api-key', 'http://example.com');
 
     // Process a chat message

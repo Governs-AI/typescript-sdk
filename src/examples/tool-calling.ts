@@ -37,7 +37,7 @@ class ToolCallingApplication {
             console.log('Tool call precheck decision:', precheckResponse.decision);
 
             switch (precheckResponse.decision) {
-                case 'allow':
+                case 'allow': {
                     // Execute the tool
                     const result = await this.executeTool(toolCall);
 
@@ -45,6 +45,7 @@ class ToolCallingApplication {
                     await this.recordToolUsage(toolCall.function.name);
 
                     return { success: true, result };
+                }
 
                 case 'deny':
                     return {
@@ -52,7 +53,7 @@ class ToolCallingApplication {
                         error: `Tool call blocked: ${precheckResponse.reasons?.join(', ')}`
                     };
 
-                case 'confirm':
+                case 'confirm': {
                     // Create confirmation request
                     const confirmation = await this.client.createConfirmation(
                         `tool_${Date.now()}`,
@@ -70,8 +71,9 @@ class ToolCallingApplication {
                         confirmationRequired: true,
                         confirmationUrl: this.client.confirmation.getConfirmationUrl(confirmation.confirmation.correlationId),
                     };
+                }
 
-                case 'redact':
+                case 'redact': {
                     // Use redacted arguments
                     const redactedArgs = precheckResponse.content?.args || JSON.parse(toolCall.function.arguments);
                     const redactedToolCall = {
@@ -86,6 +88,7 @@ class ToolCallingApplication {
                     await this.recordToolUsage(toolCall.function.name);
 
                     return { success: true, result: result2 };
+                }
 
                 default:
                     return { success: false, error: 'Unknown decision' };

@@ -3,16 +3,16 @@
 ## Project Overview
 - **Project Name**: GovernsAI TypeScript SDK
 - **Version**: 1.0.0-alpha.14
-- **Last Updated**: 2026-04-20 18:58 UTC
+- **Last Updated**: 2026-04-20 19:05 UTC
 - **Primary Purpose**: TypeScript client library for integrating GovernsAI governance controls into application workflows, including precheck, confirmations, budgets, tools, analytics, memory, and documents.
 - **Target Audience**: Application developers integrating GovernsAI into Node.js and TypeScript services.
 
 ## Current Project Status
 - **Development Stage**: Alpha
-- **Build Status**: Passing locally on `feat/gov-22-alpha14-release-fixes` via `npm run build` and `npm test -- --ci --runInBand`; publish CI is pending tag push.
+- **Build Status**: Passing locally for `npm run lint` (warnings only), `npm run build`, and `npm test -- --ci --runInBand`; remote publish is blocked by npm OTP requirements and CI secret scanning is blocked by a missing `GITLEAKS_LICENSE` secret.
 - **Test Coverage**: Coverage reporting is available via `npm run test:coverage`, but no tracked percentage is committed in the repo.
-- **Known Issues**: `@governs-ai/sdk` on npm is still `1.0.0-alpha.12`; `1.0.0-alpha.14` still needs the release tag pushed and downstream demo app pin update. Source maps and declaration maps are published without `src/`, and `npm audit` currently reports devDependency vulnerabilities.
-- **Next Milestone**: Publish `v1.0.0-alpha.14` through GitHub Actions, then update `chat-agent-example` to pin `@governs-ai/sdk@1.0.0-alpha.14`.
+- **Known Issues**: `@governs-ai/sdk` on npm is still `1.0.0-alpha.12` because the configured `NPM_TOKEN` requires interactive OTP during `npm publish`; repository CI secret scanning also fails until `GITLEAKS_LICENSE` is configured. Source maps and declaration maps are published without `src/`, and `npm audit` currently reports devDependency vulnerabilities.
+- **Next Milestone**: Replace the npm token with an automation-capable publish token, add `GITLEAKS_LICENSE`, rerun the `v1.0.0-alpha.14` publish, then update `chat-agent-example` to pin `@governs-ai/sdk@1.0.0-alpha.14`.
 
 ## Architecture Overview
 
@@ -114,6 +114,7 @@ typescript-sdk/
 - **Security Audits**: `npm audit` currently reports 11 vulnerabilities in dev dependencies; runtime dependency surface is minimal (`uuid`).
 
 ## Recent Changes Log
+- **2026-04-20**: Fixed the ESLint config plus example/test helper error-level lint violations so local lint now passes with warnings only.
 - **2026-04-20**: Fixed `retry.test.ts` TypeScript/Jest release blockers and aligned the changelog so `1.0.0-alpha.14` accurately reflects shipped functionality.
 - **2026-04-20**: `1.0.0-alpha.14` release candidate includes context memory, document management, external user memory helpers, precheck batch concurrency, and enrichment cache/circuit-breaker controls.
 - **2024-01-15**: Initial alpha release established the core client, governance clients, typed models, and retry-aware error handling.

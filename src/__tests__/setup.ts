@@ -2,6 +2,9 @@
  * Test setup and configuration
  */
 
+import { URL as NodeURL } from 'url';
+import { TextDecoder, TextEncoder } from 'util';
+
 // Mock fetch for testing
 global.fetch = jest.fn();
 
@@ -23,16 +26,16 @@ if (!global.AbortSignal) {
 
 // Mock URL for Node.js environments
 if (!global.URL) {
-    global.URL = require('url').URL;
+    global.URL = NodeURL as typeof global.URL;
 }
 
 // Mock TextEncoder/TextDecoder for Node.js environments
 if (!global.TextEncoder) {
-    global.TextEncoder = require('util').TextEncoder;
+    global.TextEncoder = TextEncoder;
 }
 
 if (!global.TextDecoder) {
-    global.TextDecoder = require('util').TextDecoder;
+    global.TextDecoder = TextDecoder;
 }
 
 // Add a simple test to satisfy Jest requirement
