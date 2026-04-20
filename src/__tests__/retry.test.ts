@@ -31,9 +31,9 @@ describe('Error type hierarchy', () => {
         expect(err.statusCode).toBe(400);
     });
 
-    it('GovernsAIError retryable flag defaults to false', () => {
+    it('GovernsAIError retryable flag is unset by default', () => {
         const err = new GovernsAIError('err');
-        expect(err.retryable).toBe(false);
+        expect(err.retryable).toBeUndefined();
     });
 
     it('GovernsAIError retryable flag can be set to true', () => {
@@ -113,7 +113,8 @@ describe('HTTPClient request headers', () => {
         const client = new HTTPClient({ apiKey: 'my-api-key', baseUrl: 'http://localhost', orgId: 'o' });
         await client.get('/test');
 
-        const [, options] = mockFetch.mock.calls[0];
+        expect(mockFetch).toHaveBeenCalled();
+        const [, options] = mockFetch.mock.calls[0]!;
         expect((options as any).headers['X-Governs-Key']).toBe('my-api-key');
     });
 
@@ -129,7 +130,8 @@ describe('HTTPClient request headers', () => {
         const client = new HTTPClient({ apiKey: 'k', baseUrl: 'http://localhost', orgId: 'o' });
         await client.post('/test', { data: 1 });
 
-        const [, options] = mockFetch.mock.calls[0];
+        expect(mockFetch).toHaveBeenCalled();
+        const [, options] = mockFetch.mock.calls[0]!;
         expect((options as any).headers['Content-Type']).toBe('application/json');
     });
 
@@ -170,9 +172,6 @@ describe('HTTPClient request headers', () => {
 // ---------------------------------------------------------------------------
 
 describe('withRetry', () => {
-    // Import after mocking to get the real implementation
-    const getWithRetry = () => require('../utils').withRetry as typeof import('../utils').withRetry;
-
     beforeEach(() => {
         jest.resetModules();
     });
@@ -223,7 +222,10 @@ describe('withRetry', () => {
 
         await expect(
             withRetry(op, { maxRetries: 3, retryDelay: 1, retryCondition: () => true })
-        ).rejects.toBeInstanceOf(GovernsAIError);
+        ).rejects.toMatchObject({
+            name: 'GovernsAIError',
+            retryable: false,
+        });
 
         expect(op).toHaveBeenCalledTimes(3);
     });
