@@ -113,8 +113,9 @@ describe('HTTPClient request headers', () => {
         const client = new HTTPClient({ apiKey: 'my-api-key', baseUrl: 'http://localhost', orgId: 'o' });
         await client.get('/test');
 
-        const [, options] = mockFetch.mock.calls[0];
-        expect((options as any).headers['X-Governs-Key']).toBe('my-api-key');
+        const firstCall0 = mockFetch.mock.calls[0];
+        const options0 = firstCall0 !== undefined ? firstCall0[1] : undefined;
+        expect((options0 as any).headers['X-Governs-Key']).toBe('my-api-key');
     });
 
     it('includes Content-Type application/json on POST', async () => {
@@ -129,7 +130,8 @@ describe('HTTPClient request headers', () => {
         const client = new HTTPClient({ apiKey: 'k', baseUrl: 'http://localhost', orgId: 'o' });
         await client.post('/test', { data: 1 });
 
-        const [, options] = mockFetch.mock.calls[0];
+        const firstCall1 = mockFetch.mock.calls[0];
+        const options = firstCall1 !== undefined ? firstCall1[1] : undefined;
         expect((options as any).headers['Content-Type']).toBe('application/json');
     });
 
@@ -170,9 +172,6 @@ describe('HTTPClient request headers', () => {
 // ---------------------------------------------------------------------------
 
 describe('withRetry', () => {
-    // Import after mocking to get the real implementation
-    const getWithRetry = () => require('../utils').withRetry as typeof import('../utils').withRetry;
-
     beforeEach(() => {
         jest.resetModules();
     });
