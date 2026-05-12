@@ -170,8 +170,12 @@ export async function withRetry<T>(
         }
     }
 
+    if (lastError) {
+        throw lastError;
+    }
+
     throw new GovernsAIError(
-        `${context} failed after ${config.maxRetries} attempts: ${lastError?.message || 'Unknown error'}`,
+        `${context} failed after ${config.maxRetries} attempts`,
         undefined,
         undefined,
         false

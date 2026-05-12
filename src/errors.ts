@@ -20,19 +20,19 @@ export interface RetryConfig {
 export class GovernsAIError extends Error {
     public readonly statusCode?: number;
     public readonly response?: HTTPResponse;
-    public readonly retryable?: boolean;
+    public readonly retryable: boolean;
 
     constructor(
         message: string,
         statusCode?: number,
         response?: HTTPResponse,
-        retryable?: boolean
+        retryable: boolean = false
     ) {
         super(message);
         this.name = 'GovernsAIError';
         if (statusCode !== undefined) this.statusCode = statusCode;
         if (response !== undefined) this.response = response;
-        if (retryable !== undefined) this.retryable = retryable;
+        this.retryable = retryable;
     }
 }
 
@@ -388,8 +388,12 @@ export async function withRetry<T>(
         }
     }
 
+    if (lastError) {
+        throw lastError;
+    }
+
     throw new GovernsAIError(
-        `${context} failed after ${config.maxRetries} attempts: ${lastError?.message || 'Unknown error'}`,
+        `${context} failed after ${config.maxRetries} attempts`,
         undefined,
         undefined,
         false
