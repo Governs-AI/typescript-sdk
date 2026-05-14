@@ -8,6 +8,14 @@
 // Core client
 export { GovernsAIClient, createClient, createClientFromEnv } from './client';
 
+// Middleware helpers (import direct via subpaths for tree-shaking).
+export { callPrecheck, PrecheckHTTPError } from './middleware/precheck-fetch';
+export type { PrecheckResult, PrecheckCallOptions, PrecheckDecisionKind } from './middleware/precheck-fetch';
+export { governsExpress } from './middleware/express';
+export type { GovernsExpressOptions } from './middleware/express';
+export { governsNextMiddleware } from './middleware/nextjs';
+export type { GovernsNextOptions } from './middleware/nextjs';
+
 // Feature clients
 export { PrecheckClient } from './precheck';
 export { ConfirmationClient } from './confirmation';
