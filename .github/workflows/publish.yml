@@ -1,9 +1,17 @@
 name: Publish to npm
 
+# Manual-only by design (ADR-005 sibling decision, 2026-05-12):
+# We push tags as release markers but the actual `npm publish` is gated behind
+# a manual `workflow_dispatch` so the founder controls when the package ships.
+# Re-enable the tag trigger only after the npm org + token are confirmed.
+
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing git tag to publish (e.g., v1.0.0-alpha.14)"
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -15,12 +23,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           registry-url: "https://registry.npmjs.org"
+
+      - name: Verify package.json version matches tag
+        run: |
+          PKG=$(jq -r .version package.json)
+          TAG="${{ inputs.tag }}"
+          TAG_VER="${TAG#v}"
+          if [ "$PKG" != "$TAG_VER" ]; then
+            echo "::error::package.json version ($PKG) != tag ($TAG_VER)"
+            exit 1
+          fi
 
       - run: npm ci
 
