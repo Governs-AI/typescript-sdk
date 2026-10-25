@@ -245,6 +245,10 @@ export interface ConfirmationResponse {
         expiresAt: string;
         createdAt: string;
     };
+    /** Where a reviewer approves this request. */
+    confirmationUrl?: string;
+    /** The org's approvals inbox. */
+    approvalsUrl?: string;
 }
 
 export interface ConfirmationStatus {

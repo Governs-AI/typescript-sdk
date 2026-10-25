@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   confirmation for exactly one execution (`POST /api/v1/confirmation/:id/consume`).
 - The `cancelled` and `consumed` confirmation statuses. Both are final.
 - `sendPolicyConfig` config option.
+- `ConfirmationResponse.confirmationUrl` / `approvalsUrl` (returned by the platform).
 
 ### Changed
 
