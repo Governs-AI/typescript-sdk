@@ -77,7 +77,12 @@ export class ToolClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/agents/tools/register', { tools }),
+                () => this.registerMissing(
+                    tools.map((tool) => ({
+                        toolName: tool.function.name,
+                        description: tool.function.description,
+                    }))
+                ),
                 'register tools with metadata'
             );
 
@@ -100,7 +105,7 @@ export class ToolClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/agents/tools', { toolNames }),
+                () => this.registerMissing(toolNames.map((toolName) => ({ toolName }))),
                 'register agent tools'
             );
 
@@ -206,12 +211,13 @@ export class ToolClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get<{ tools: string[] }>('/api/agents/tools'),
+                () => this.httpClient.get<{ tools: Array<{ toolName: string }> }>('/api/v1/tools'),
                 'get agent tools'
             );
 
-            this.logger.debug('Agent tools retrieved', { count: response.tools.length });
-            return response.tools;
+            const names = response.tools.map((tool) => tool.toolName);
+            this.logger.debug('Agent tools retrieved', { count: names.length });
+            return names;
         } catch (error) {
             this.logger.error('Failed to get agent tools', error);
             throw createToolError(
@@ -466,6 +472,32 @@ export class ToolClient {
     // ============================================================================
     // Retry Logic
     // ============================================================================
+
+    /**
+     * Add tools to the platform's tool catalog (`/api/v1/tools`) so they can
+     * be targeted by policy rules. Tools already in the catalog are left as
+     * they are: their risk and scope may have been set by an admin.
+     */
+    private async registerMissing(
+        entries: Array<{ toolName: string; description?: string }>
+    ): Promise<void> {
+        const existing = await this.httpClient.get<{ tools: Array<{ toolName: string }> }>(
+            '/api/v1/tools?includeInactive=true'
+        );
+        const known = new Set(existing.tools.map((tool) => tool.toolName));
+        for (const entry of entries) {
+            if (known.has(entry.toolName)) continue;
+            await this.httpClient.post('/api/v1/tools', {
+                toolName: entry.toolName,
+                description: entry.description,
+                category: 'custom',
+                riskLevel: 'medium',
+                scope: 'net.external',
+                direction: 'both',
+            });
+            known.add(entry.toolName);
+        }
+    }
 
     private async withRetry<T>(
         operation: () => Promise<T>,

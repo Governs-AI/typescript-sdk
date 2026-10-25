@@ -37,6 +37,7 @@ export class PrecheckClient {
     private enrichmentCircuitResetTimeoutMs: number;
     private enrichmentCircuitFailureCount: number;
     private enrichmentCircuitOpenUntil: number;
+    private sendPolicyConfig: boolean;
 
     constructor(precheckHttpClient: HTTPClient, config: GovernsAIConfig, platformHttpClient?: HTTPClient) {
         this.httpClient = precheckHttpClient;
@@ -49,6 +50,7 @@ export class PrecheckClient {
         this.enrichmentCircuitResetTimeoutMs = config.enrichmentCircuitResetTimeoutMs ?? 30_000;
         this.enrichmentCircuitFailureCount = 0;
         this.enrichmentCircuitOpenUntil = 0;
+        this.sendPolicyConfig = config.sendPolicyConfig ?? false;
     }
 
     /**
@@ -59,6 +61,7 @@ export class PrecheckClient {
         this.enrichmentCacheTtlMs = config.enrichmentCacheTtlMs ?? 60_000;
         this.enrichmentCircuitFailureThreshold = config.enrichmentCircuitFailureThreshold ?? 3;
         this.enrichmentCircuitResetTimeoutMs = config.enrichmentCircuitResetTimeoutMs ?? 30_000;
+        this.sendPolicyConfig = config.sendPolicyConfig ?? false;
     }
 
     setHttpClients(precheckHttpClient: HTTPClient, platformHttpClient?: HTTPClient): void {
@@ -135,7 +138,7 @@ export class PrecheckClient {
     }
 
     private async enrichPrecheckRequest(request: PrecheckRequest): Promise<PrecheckRequest> {
-        const needsPolicy = !request.policy_config;
+        const needsPolicy = this.sendPolicyConfig && !request.policy_config;
         const needsTool = !request.tool_config && !!request.tool;
         const needsBudget = !request.budget_context;
 
