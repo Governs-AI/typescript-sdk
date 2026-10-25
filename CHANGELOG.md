@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- `registerAgentTools` / `registerToolsWithMetadata` no longer fail when the
+  platform's tool catalog is read-only for the API key (403). Missing tools are
+  logged once as a warning; an org admin adds them in the dashboard.
+
 ## [1.0.0-alpha.17] — unpublished (v2 branch)
 
 ### Added

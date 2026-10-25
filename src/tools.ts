@@ -13,6 +13,7 @@ import {
     GovernsAIConfig
 } from './types';
 import {
+    GovernsAIError,
     ToolError,
     createToolError,
     withRetry,
@@ -477,6 +478,11 @@ export class ToolClient {
      * Add tools to the platform's tool catalog (`/api/v1/tools`) so they can
      * be targeted by policy rules. Tools already in the catalog are left as
      * they are: their risk and scope may have been set by an admin.
+     *
+     * The catalog is admin-managed: API keys can read it but not write it, so
+     * with an API key, unknown tools are reported (once) instead of added.
+     * Policies can still name them; an org admin adds catalog entries in the
+     * dashboard.
      */
     private async registerMissing(
         entries: Array<{ toolName: string; description?: string }>
@@ -485,17 +491,32 @@ export class ToolClient {
             '/api/v1/tools?includeInactive=true'
         );
         const known = new Set(existing.tools.map((tool) => tool.toolName));
+        const notAdded: string[] = [];
         for (const entry of entries) {
             if (known.has(entry.toolName)) continue;
-            await this.httpClient.post('/api/v1/tools', {
-                toolName: entry.toolName,
-                description: entry.description,
-                category: 'custom',
-                riskLevel: 'medium',
-                scope: 'net.external',
-                direction: 'both',
-            });
+            try {
+                await this.httpClient.post('/api/v1/tools', {
+                    toolName: entry.toolName,
+                    description: entry.description,
+                    category: 'custom',
+                    riskLevel: 'medium',
+                    scope: 'net.external',
+                    direction: 'both',
+                });
+            } catch (error) {
+                if (error instanceof GovernsAIError && error.statusCode === 403) {
+                    notAdded.push(entry.toolName);
+                    continue;
+                }
+                throw error;
+            }
             known.add(entry.toolName);
+        }
+        if (notAdded.length > 0) {
+            this.logger.warn(
+                'Tools not in the GovernsAI catalog (read-only for API keys; an org admin can add them in the dashboard)',
+                { tools: notAdded }
+            );
         }
     }
 
