@@ -358,6 +358,7 @@ describe('PrecheckClient', () => {
                     baseUrl: 'http://localhost:3002',
                     orgId: 'test-org',
                     enrichmentCacheTtlMs: 60000,
+                    sendPolicyConfig: true,
                 },
                 platformHttp
             );
@@ -392,6 +393,7 @@ describe('PrecheckClient', () => {
                     orgId: 'test-org',
                     enrichmentCircuitFailureThreshold: 1,
                     enrichmentCircuitResetTimeoutMs: 60000,
+                    sendPolicyConfig: true,
                 },
                 platformHttp
             );
@@ -409,6 +411,37 @@ describe('PrecheckClient', () => {
 
             expect(platformHttp.get).toHaveBeenCalledTimes(1);
             expect(precheckHttp.post).toHaveBeenCalledTimes(2);
+        });
+    
+        it('does not fetch or send policy_config by default (precheck resolves the org policy)', async () => {
+            const precheckHttp = {
+                post: jest.fn().mockResolvedValue({ decision: 'allow', reasons: [] }),
+                get: jest.fn(),
+            } as any;
+            const platformHttp = {
+                get: jest.fn().mockImplementation((endpoint: string) => {
+                    if (endpoint === '/api/v1/tools/model.chat/metadata') {
+                        return Promise.resolve({ metadata: { tool_name: 'model.chat' } });
+                    }
+                    if (endpoint === '/api/v1/budget/context') {
+                        return Promise.resolve({ monthly_limit: 100 });
+                    }
+                    return Promise.reject(new Error(`Unexpected endpoint: ${endpoint}`));
+                }),
+            } as any;
+
+            const client = new PrecheckClient(
+                precheckHttp,
+                { apiKey: 'k', baseUrl: 'http://localhost:3002', orgId: 'o' },
+                platformHttp
+            );
+            await client.checkRequest({ tool: 'model.chat', scope: 'net.external', raw_text: 'Hi' } as any);
+
+            const endpoints = platformHttp.get.mock.calls.map((c: any[]) => c[0]);
+            expect(endpoints).not.toContain('/api/v1/policies');
+            const sent = precheckHttp.post.mock.calls[0][1];
+            expect(sent.policy_config).toBeUndefined();
+            expect(sent.tool_config).toEqual({ tool_name: 'model.chat' });
         });
     });
 });

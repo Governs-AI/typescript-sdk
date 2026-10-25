@@ -105,7 +105,11 @@ export class ConfirmationClient {
     }
 
     /**
-     * Approve a confirmation (if you have the necessary permissions)
+     * Approve a confirmation.
+     *
+     * Needs a dashboard user's session (Bearer token) — the requester or an
+     * org OWNER/ADMIN. The platform refuses API keys here so an agent cannot
+     * approve its own request; reviewers normally use the Approvals inbox.
      */
     async approveConfirmation(correlationId: string): Promise<void> {
         this.logger.debug('Approving confirmation', { correlationId });
@@ -121,6 +125,34 @@ export class ConfirmationClient {
             this.logger.error('Failed to approve confirmation', error);
             throw createConfirmationError(
                 `Failed to approve confirmation: ${error instanceof Error ? error.message : "Unknown error"}`,
+                undefined,
+                undefined
+            );
+        }
+    }
+
+    /**
+     * Claim an approved confirmation for exactly one execution.
+     *
+     * Call it right before running the approved action. It moves the
+     * confirmation from approved to consumed atomically, and a second call
+     * fails, so one approval can't authorise two runs.
+     */
+    async consumeConfirmation(correlationId: string): Promise<ConfirmationStatus> {
+        this.logger.debug('Consuming confirmation', { correlationId });
+
+        try {
+            // Not retried: a retry after a lost response would report a
+            // false "already consumed".
+            const response = await this.httpClient.post<ConfirmationStatus>(
+                `/api/v1/confirmation/${encodeURIComponent(correlationId)}/consume`
+            );
+            this.logger.info('Confirmation consumed', { correlationId });
+            return response;
+        } catch (error) {
+            this.logger.error('Failed to consume confirmation', error);
+            throw createConfirmationError(
+                `Failed to consume confirmation: ${error instanceof Error ? error.message : "Unknown error"}`,
                 undefined,
                 undefined
             );
@@ -280,7 +312,7 @@ export class ConfirmationClient {
      * Check if a status is final (no more changes expected)
      */
     isFinalStatus(status: string): boolean {
-        return ['approved', 'denied', 'expired', 'cancelled'].includes(status);
+        return ['approved', 'denied', 'expired', 'cancelled', 'consumed'].includes(status);
     }
 
     /**

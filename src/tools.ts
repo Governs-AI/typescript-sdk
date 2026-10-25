@@ -13,6 +13,7 @@ import {
     GovernsAIConfig
 } from './types';
 import {
+    GovernsAIError,
     ToolError,
     createToolError,
     withRetry,
@@ -77,7 +78,12 @@ export class ToolClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/agents/tools/register', { tools }),
+                () => this.registerMissing(
+                    tools.map((tool) => ({
+                        toolName: tool.function.name,
+                        description: tool.function.description,
+                    }))
+                ),
                 'register tools with metadata'
             );
 
@@ -100,7 +106,7 @@ export class ToolClient {
 
         try {
             await this.withRetry(
-                () => this.httpClient.post('/api/agents/tools', { toolNames }),
+                () => this.registerMissing(toolNames.map((toolName) => ({ toolName }))),
                 'register agent tools'
             );
 
@@ -206,12 +212,13 @@ export class ToolClient {
 
         try {
             const response = await this.withRetry(
-                () => this.httpClient.get<{ tools: string[] }>('/api/agents/tools'),
+                () => this.httpClient.get<{ tools: Array<{ toolName: string }> }>('/api/v1/tools'),
                 'get agent tools'
             );
 
-            this.logger.debug('Agent tools retrieved', { count: response.tools.length });
-            return response.tools;
+            const names = response.tools.map((tool) => tool.toolName);
+            this.logger.debug('Agent tools retrieved', { count: names.length });
+            return names;
         } catch (error) {
             this.logger.error('Failed to get agent tools', error);
             throw createToolError(
@@ -466,6 +473,52 @@ export class ToolClient {
     // ============================================================================
     // Retry Logic
     // ============================================================================
+
+    /**
+     * Add tools to the platform's tool catalog (`/api/v1/tools`) so they can
+     * be targeted by policy rules. Tools already in the catalog are left as
+     * they are: their risk and scope may have been set by an admin.
+     *
+     * The catalog is admin-managed: API keys can read it but not write it, so
+     * with an API key, unknown tools are reported (once) instead of added.
+     * Policies can still name them; an org admin adds catalog entries in the
+     * dashboard.
+     */
+    private async registerMissing(
+        entries: Array<{ toolName: string; description?: string }>
+    ): Promise<void> {
+        const existing = await this.httpClient.get<{ tools: Array<{ toolName: string }> }>(
+            '/api/v1/tools?includeInactive=true'
+        );
+        const known = new Set(existing.tools.map((tool) => tool.toolName));
+        const notAdded: string[] = [];
+        for (const entry of entries) {
+            if (known.has(entry.toolName)) continue;
+            try {
+                await this.httpClient.post('/api/v1/tools', {
+                    toolName: entry.toolName,
+                    description: entry.description,
+                    category: 'custom',
+                    riskLevel: 'medium',
+                    scope: 'net.external',
+                    direction: 'both',
+                });
+            } catch (error) {
+                if (error instanceof GovernsAIError && error.statusCode === 403) {
+                    notAdded.push(entry.toolName);
+                    continue;
+                }
+                throw error;
+            }
+            known.add(entry.toolName);
+        }
+        if (notAdded.length > 0) {
+            this.logger.warn(
+                'Tools not in the GovernsAI catalog (read-only for API keys; an org admin can add them in the dashboard)',
+                { tools: notAdded }
+            );
+        }
+    }
 
     private async withRetry<T>(
         operation: () => Promise<T>,

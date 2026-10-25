@@ -23,6 +23,12 @@ export interface GovernsAIConfig {
     enrichmentCacheTtlMs?: number; // Default: 60000
     enrichmentCircuitFailureThreshold?: number; // Default: 3
     enrichmentCircuitResetTimeoutMs?: number; // Default: 30000
+    /**
+     * Fetch the org's policy and send it as `policy_config`. Off by default:
+     * precheck resolves the org's dashboard policy from the API key itself,
+     * and ignores a payload policy whenever the org has one.
+     */
+    sendPolicyConfig?: boolean; // Default: false
 }
 
 // ============================================================================
@@ -239,6 +245,10 @@ export interface ConfirmationResponse {
         expiresAt: string;
         createdAt: string;
     };
+    /** Where a reviewer approves this request. */
+    confirmationUrl?: string;
+    /** The org's approvals inbox. */
+    approvalsUrl?: string;
 }
 
 export interface ConfirmationStatus {
@@ -252,7 +262,7 @@ export interface ConfirmationStatus {
         requestPayload: any;
         decision: string;
         reasons: string[];
-        status: "pending" | "approved" | "denied" | "expired";
+        status: "pending" | "approved" | "denied" | "expired" | "cancelled" | "consumed";
         expiresAt: string;
         createdAt: string;
         approvedAt?: string;

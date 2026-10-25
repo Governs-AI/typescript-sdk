@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- `registerAgentTools` / `registerToolsWithMetadata` no longer fail when the
+  platform's tool catalog is read-only for the API key (403). Missing tools are
+  logged once as a warning; an org admin adds them in the dashboard.
+
+## [1.0.0-alpha.17] — unpublished (v2 branch)
+
+### Added
+
+- `ConfirmationClient.consumeConfirmation(correlationId)` claims an approved
+  confirmation for exactly one execution (`POST /api/v1/confirmation/:id/consume`).
+- The `cancelled` and `consumed` confirmation statuses. Both are final.
+- `sendPolicyConfig` config option.
+- `ConfirmationResponse.confirmationUrl` / `approvalsUrl` (returned by the platform).
+
+### Changed
+
+- **Policy enrichment is off by default.** Precheck resolves the org's
+  dashboard policy from the API key, and a payload `policy_config` is ignored
+  whenever the org has one. Fetching `/api/v1/policies` before every precheck
+  only added latency, and its 60s cache could send a stale policy.
+  Set `sendPolicyConfig: true` for the old behaviour (orgs without a dashboard policy).
+- `registerToolsWithMetadata`, `registerAgentTools` and `getAgentTools` use
+  `/api/v1/tools`. The `/api/agents/*` routes they called don't exist. Tools
+  already in the catalog are not overwritten.
+- `approveConfirmation` is documented as session-only. The platform refuses
+  API keys so an agent cannot approve its own request.
+
+
 ### Added
 
 - `PrecheckClient` now supports configurable batch concurrency via `precheckBatchConcurrency` and `checkBatch(..., { concurrency })`.
